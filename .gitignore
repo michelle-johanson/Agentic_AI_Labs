@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+.env
+# ChromaDB index: build artifact, regenerate with `python lab1/createChromadb.py`
+lab1/chroma/
+
+# ChromaDB index for lab 2: build artifact, regenerate with
+# `python "lab2 - RAG/embedMusicChunks.py"`
+lab2 - RAG/chroma/
