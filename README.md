@@ -22,6 +22,15 @@ ollama pull phi3             # used by gradioMusicChatbot.py
 ollama list                  # check that the ollama models are pulled correctly
 ```
 
+## Adding a package
+
+Install it, then record it so the next person gets it too:
+
+```bash
+pip install <package>
+pip freeze > requirements.txt
+```
+
 ## Getting a Hugging Face token
 
 1. Log in at [huggingface.co](https://huggingface.co).
@@ -32,11 +41,17 @@ ollama list                  # check that the ollama models are pulled correctly
 
 The scripts call `load_dotenv()`, so they pick it up automatically. `.env` is in `.gitignore`, so it won't be committed. Never paste the token into code, chat, or anything you submit. If it leaks, delete it on the Access Tokens page and make a new one.
 
-## Adding a package
+## Common Git commands
 
-Install it, then record it so the next person gets it too:
+Welcome to the Git repo! If you are unfamiliar with GitHub for group projects, here are some common git commands to help you:
 
 ```bash
-pip install <package>
-pip freeze > requirements.txt
+git checkout -b yourname    # Get on your own branch
+git add .                   # Stage your changes
+git commit -m "changes"     # Commit your changes with a commit message
+git push origin yourname    # Push your branches changes to GitHub
+git checkout main           # Checkout the main branch
+git pull origin main        # Look at updated main branch
 ```
+
+Please pull origin main before checking out your own branch. Merge your branch into main with a GitHub pull request when possible.
