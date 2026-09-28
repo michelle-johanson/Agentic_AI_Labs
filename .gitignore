@@ -7,3 +7,4 @@ lab1/chroma/
 # ChromaDB index for lab 2: build artifact, regenerate with
 # `python "lab2/embedMusicChunks.py"`
 lab2/chroma/
+lab2/pitchfork_reviews_v2.xlsx
