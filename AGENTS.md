@@ -10,6 +10,7 @@ Each lab has a baseline system from the instructor, and my job is to find and bu
 - One improvement at a time. Build it, measure it, write it up, then go looking for the next thing.
 - Keep a short backlog of ideas we noticed but haven't built.
 - Don't run the venv in a shell. For long commands and processes, ask me to run it.
+- Don't add new files without telling me.
 
 ## Building an improvement
 

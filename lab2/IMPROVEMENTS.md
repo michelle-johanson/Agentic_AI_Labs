@@ -380,7 +380,323 @@ could see "year: 2023", it answered from them.
 - **Only in the terminal chatbot.** `gradioMusicChatbot.py` (Improvements 2–4)
   does not have it yet, and currently fails on every question (see backlog).
 
+## Improvement 7: One pipeline for both chatbots
+
+*Reproduce with `python lab2/evalMetadataFilters.py --gradio`.*
+
+### Plain-language summary
+
+Improvements 1-5 were built in `gradioMusicChatbot.py` and Improvement 6 in
+`musicChatbot.py`, and neither file had the other's work. So the Gradio app --
+the one we demo -- still ignored years, genres and scores, and its model still
+could not see them. Asked for albums from 2023 it found none, while the terminal
+chatbot found ten. We also discovered that the Gradio app could not answer any
+question at all, because MMR was silently broken.
+
+### 1. What we extended
+
+- **`gradioMusicChatbot.py` now imports from `musicChatbot.py`**
+  (`parse_filters`, `build_where`, `vectorstore`) instead of building its own
+  `Chroma`. `musicChatbot.py` already keeps its chat loop under
+  `if __name__ == "__main__":`, so importing it does not start the CLI. No new
+  files, and one shared collection instead of two.
+- **`resolve_filters(query)`** (new, in `gradioMusicChatbot.py`): runs
+  `parse_filters` then `build_where`, and drops a filter that matches no review
+  so an impossible request ("albums from 2030") still gets a real answer.
+- **`retrieve_with_confidence(query)`**: applies the filter to **both** the MMR
+  search and the `similarity_search_with_relevance_scores` lookup, and now
+  returns the filters alongside the documents and the confidence.
+- **`format_context(documents)`**: each `[Source N]` block now carries `Year:`
+  and `Genre:` as well as artist, title and score. A new `_shown()` helper
+  prints `unknown` for the ~3,300 chunks with no genre and ~600 with no year,
+  and shows years as `2023` rather than `2023.0`.
+- **`get_response`**: prints `🔎 Filters applied: ...` above the answer, the way
+  the CLI does, so a surprising answer can be traced to a wrong filter rather
+  than blamed on the model.
+- **`musicChatbot.py`**: added `embedding_function=embeddings`
+  (`HuggingFaceEmbeddings`, `all-mpnet-base-v2` -- the same model
+  `embedMusicChunks.py` used) to the shared `Chroma`. This is the MMR fix below.
+
+**The bug we found.** `Chroma(collection_name=..., persist_directory=...)` was
+created with no `embedding_function`. Plain similarity search still worked,
+because Chroma stores the embedding model in the collection config and embeds
+queries itself. MMR cannot use that: it has to embed the query in Python to
+compare candidate chunks against each other. So every question in the Gradio UI
+raised:
+
+```
+ValueError: For MMR search, you must specify an embedding function on creation.
+```
+
+Improvement 2 switched the retriever to MMR, which means the Gradio app has been
+unable to answer anything since. We reproduced it against the committed version
+before changing anything, so this is not a regression we introduced. Naming the
+model fixes it, and we checked the fix does not move the CLI's results: top-10
+is byte-identical on five spot-check queries, so Improvement 6's numbers still
+stand.
+
+### 2. Why this and not the alternatives
+
+- **Copy the filter code into `gradioMusicChatbot.py`**: fastest, but the two
+  files had already drifted once and two copies drift again. Importing means
+  there is one definition of `parse_filters`.
+- **A new shared module both files import**: cleaner in the abstract, but it is
+  a third file to keep in step and `musicChatbot.py` was already import-safe.
+  We preferred no new file.
+- **Rebuild the index with year and genre inside the chunk text**: would help
+  the search notice years, but cannot guarantee a match, and costs a 21-minute
+  rebuild. Filters guarantee it with no rebuild.
+- **Give the Gradio app its own `Chroma` with an embedding function**: fixes MMR
+  but leaves two collections open on one directory, which Chroma rejects when
+  the settings differ.
+
+### 3. Benefits
+
+Retrieval on the Gradio path (MMR, `k=4`, the 15 filter questions; "matching" =
+the chunk's metadata meets every constraint in the question):
+
+| Question | Before | After |
+|---|---|---|
+| What are some critically acclaimed albums from 2023? | 0/4 | 4/4 |
+| Recommend some jazz albums | 2/4 | 4/4 |
+| What are the highest rated jazz albums? | 2/4 | 4/4 |
+| Rap albums from 2019 | 0/4 | 0/4 * |
+| Albums with a score of 9.5 or higher | 1/4 | 4/4 |
+| Good rock albums from the 1990s | 0/4 | 4/4 |
+| Metal albums released after 2015 | 0/4 | 4/4 |
+| Electronic music from 2016 | 0/4 | 4/4 |
+| Folk or country records from 2020 | 0/4 | 4/4 |
+| Which albums got a perfect 10? | 0/4 | 4/4 |
+| Hip hop albums from 2021 | 0/4 | 4/4 |
+| R&B albums from 2017 | 0/4 | 4/4 |
+| Experimental albums from the 2000s | 0/4 | 4/4 |
+| What were the best albums of 2018? | 0/4 | 4/4 |
+| Top rated electronic albums from the 90s | 0/4 | 4/4 |
+| **Total** | **5/60 (8%)** | **56/60 (93%)** |
+
+\* "Rap albums from 2019" stays 0/4: the library has no rap review with
+`year` 2019, so the filter correctly matches nothing and the search falls back
+to unfiltered. The honest answer is that there are none, which the fallback at
+least lets the model say.
+
+Two more before/after facts:
+
+| | Before | After |
+|---|---|---|
+| Gradio questions that get any answer at all | 0 (MMR raised `ValueError`) | all |
+| `Year:` and `Genre:` visible to the model | no | yes |
+
+### 4. Drawbacks and tradeoffs
+
+- **Importing `musicChatbot` to get the filters also builds its `mistral` and
+  `filter_llm` objects and reads all 50,037 genre labels at startup.** The LLM
+  objects are lazy so nothing loads until invoked, but the genre scan adds a few
+  seconds to Gradio's boot. A shared module would avoid it.
+- **The filter step adds an LLM call before every search.** On the CLI eval that
+  averaged a few seconds per question, so the Gradio app feels slower to answer.
+- **It broke the confidence gate**, which is Improvement 8 below. We would not
+  have noticed without re-running the eval after the change.
+- **`k=4` is still unmeasured.** Improvement 2 chose 4 chunks over 10 without a
+  before/after, and with filters now guaranteeing on-topic chunks, a larger `k`
+  may well be better. We did not have time to sweep it.
+- The MMR fix means the query is embedded in Python on every question instead of
+  inside Chroma. Results were identical on our spot checks, but that is five
+  queries, not a proof.
+
+## Improvement 8: Setting the confidence threshold from data
+
+*Reproduce with `python lab2/evalMetadataFilters.py --threshold`.*
+
+### Plain-language summary
+
+Improvement 3 refuses to answer when the retrieved chunks look irrelevant, using
+a cutoff of `0.5` that its own writeup admits was a starting point with no
+measurement behind it. Adding filters made that number wrong, and the app began
+refusing good questions. We picked a new number by testing it.
+
+### 1. What we extended
+
+- **`RETRIEVAL_CONFIDENCE_THRESHOLD` in `gradioMusicChatbot.py`**: default
+  changed from `0.5` to `0.35`. Still overridable by environment variable.
+- **`threshold_eval()` in `evalMetadataFilters.py`** (new): scores 20 questions
+  the reviews can answer (the 15 filter questions plus the 5 no-filter ones) and
+  10 that they cannot ("What is the capital of France?", "How many calories are
+  in a banana?"), then sweeps the threshold from 0.00 to 1.00 in steps of 0.05
+  and reports how many of each group land on the right side.
+
+### 2. Why this and not the alternatives
+
+- **Leave it at 0.5**: measured as the worst realistic option -- it refused 6 of
+  15 filter questions that had 4 matching chunks each.
+- **Remove the gate when a filter matched** (the filter already guarantees
+  on-topic chunks): tempting, but it would let "What is the capital of France?"
+  through whenever the filter parser happened to extract something, and it makes
+  the app's behaviour depend on a hidden branch.
+- **Normalise the score against the filtered pool** instead of using an absolute
+  cutoff: probably the better long-term fix, but it needs a calibration set per
+  filter shape, which we do not have.
+- **Pick the value that separates the two groups perfectly**: not possible. The
+  groups overlap, which is the real finding below.
+
+### 3. Benefits
+
+The two groups overlap, so no cutoff is clean:
+
+| | min | median | max |
+|---|---|---|---|
+| answerable (n=20) | 0.383 | 0.529 | 0.719 |
+| unanswerable (n=10) | 0.162 | 0.340 | **0.417** |
+
+Sweep (answering an answerable question and refusing an unanswerable one both
+count as correct):
+
+| threshold | answers / 20 answerable | refuses / 10 unanswerable | correct |
+|---|---|---|---|
+| 0.30 | 20 | 5 | 83% |
+| **0.35** | **20** | **7** | **90%** |
+| 0.40 | 19 | 8 | 90% |
+| 0.45 | 16 | 10 | 87% |
+| 0.50 *(Improvement 3)* | 14 | 10 | **80%** |
+| 0.55 | 8 | 10 | 60% |
+
+`0.35` and `0.40` tie at 90%. We chose `0.35` because it refuses none of the 20
+real music questions, and being stonewalled on a genuine question is a worse
+failure than an off-topic question getting a grounded answer -- the prompt
+already tells the model to say when it does not know.
+
+Effect on Improvement 7's questions:
+
+| | Before (0.5) | After (0.35) |
+|---|---|---|
+| Filter questions wrongly refused | 6/15 | **0/15** |
+| Chunks matching the request | 93% | 93% (unchanged) |
+
+### 4. Drawbacks and tradeoffs
+
+- **3 of 10 nonsense questions still get through** at `0.35`, including "What is
+  the capital of France?" (0.413) and "What is the weather in Provo tomorrow?"
+  (0.417). They score higher than the weakest real question, so no threshold
+  catches them without also refusing real ones. The gate reduces hallucination
+  risk; it does not remove it.
+- **30 questions is a small sample**, and we wrote both lists ourselves, so they
+  are not independent of the system we are testing. A held-out set written by
+  someone else would be worth more.
+- **The number is specific to this setup.** It depends on `all-mpnet-base-v2`,
+  on MMR with `k=4`, and on filters being applied to the score lookup. Any of
+  those changing means re-running the sweep.
+- **The unanswerable questions are all clearly off-topic.** The harder case --
+  a real music question about an album not in these 1,854 reviews -- is not
+  tested at all, and that is where a confidence gate matters most.
+- **What a leaked question actually looks like.** We ran "What is the capital of
+  France?" through the live app. Phi-3 declined the France part correctly, then
+  padded the answer with the album list from the *previous* question, because
+  `chat_history` in `gradioMusicChatbot.py` is a module-level global shared
+  across turns and across browser sessions. The gate is not the only thing
+  standing between an off-topic question and a confusing answer.
+
+## Improvement 9: Two bugs in the Gradio app
+
+*Both found while testing Improvements 7 and 8, both in `gradioMusicChatbot.py`.*
+
+### 1. What we extended
+
+**Bug A - one conversation shared by every visitor.** `chat_history` was a
+module-level list. Gradio serves every browser from a single Python process, so
+all visitors appended to the same list: one person's questions became another
+person's context, and "Clear Chat" wiped the history for everyone.
+
+- Deleted the module-level `chat_history = []`.
+- **`format_chat_history(history)`** now takes the Chatbot component's own
+  message list, which Gradio keeps per session, and reads its
+  `{"role", "content"}` dicts.
+- **`get_response`** builds and returns `list(history or [])` instead of
+  mutating the global, so the returned list *is* that session's history.
+- **`clear_history()`** just returns `None`. Emptying the component is now
+  sufficient, and it cannot affect anyone else.
+
+**Bug B - citations that pointed at nothing.** `format_sources` skipped repeated
+reviews with `continue`, which silently dropped that chunk's number. The prompt
+tells the model to cite `[Source N]`, so if sources 2 and 3 came from one review
+the model could cite `[Source 3]` and no `[Source 3]` line existed to check it
+against.
+
+- `format_sources` now groups the numbers per review and prints
+  `[Sources 2, 3]`.
+- It groups on `(artist, title)` rather than `source_id`. `source_id` arrived
+  with Improvement 1, but **the collection currently on disk predates it and
+  reports `None` for every chunk**, so grouping on it would never have worked.
+- The `(source_id)` suffix is only printed when the index actually stored one,
+  instead of the meaningless `(chunk-1)` the old fallback produced.
+
+### 2. Why this and not the alternatives
+
+- **Bug A: use `gr.State` for the history.** Also per-session and it would work,
+  but the Chatbot component already holds exactly this list, so a second copy
+  would be one more thing to keep in step.
+- **Bug A: keep the global and key it by session id.** That is re-implementing
+  what Gradio already does, and nothing would ever clean up old sessions.
+- **Bug B: renumber the sources sequentially after deduplicating.** Then the
+  listing is dense, but its numbers no longer match `format_context`, which
+  turns a dangling citation into a *wrong* one. Worse.
+- **Bug B: rebuild the index so `source_id` exists.** The right long-term fix
+  and it is on the backlog, but a 21-minute rebuild (longer on the larger
+  workbook) is not needed to make citations resolve.
+
+### 3. Benefits
+
+Bug A, two simulated visitors in one process:
+
+| | Before | After |
+|---|---|---|
+| Visitor B's history after B's first question | 4 messages (A's turn included) | **2 messages** |
+| B's answer influenced by A's question | yes | **no** |
+| "Clear Chat" wipes other visitors' history | yes | **no** |
+
+Bug B, four chunks where sources 2 and 3 share a review:
+
+| | `[Source N]` the prompt cites | resolvable in the listing |
+|---|---|---|
+| Before | 1, 2, 3, 4 | 1, 2, 4 — **3 dangles** |
+| After | 1, 2, 3, 4 | **1, 2, 3, 4** |
+
+Re-ran the Improvement 7 eval afterwards: chunks matching the request still
+56/60 (93%), wrong refusals still 0/15. No regression.
+
+### 4. Drawbacks and tradeoffs
+
+- **Fixing Bug A exposed a worse problem underneath it.** Now that follow-up
+  questions genuinely carry context, we asked "Recommend some jazz albums" and
+  then "Which of those is the highest rated?". `parse_filters` reads each
+  question on its own, so the second one extracted `{'min_score': 9.0}` and
+  **lost the Jazz constraint**. The four retrieved sources were Viktor Vaughn,
+  Faust, Mastodon and Peter Gabriel, yet the answer named John Coltrane's *A
+  Love Supreme* -- taken from the previous turn's text, not from the retrieved
+  context. So the answer was reasonable and the citations underneath it were
+  unrelated to it. The fix is to rewrite a follow-up into a standalone question
+  before parsing filters (which is what `ConversationalRetrievalChain` does for
+  the CLI); we found this too late to build it. **This is the most serious
+  known problem in the app.**
+- **History is fed to the model verbatim**, including the `🔎 Filters applied`
+  line and the whole supporting-reviews block, so the prompt grows quickly and
+  `phi3`'s context fills with our own formatting.
+- **Bug B groups on `(artist, title)`.** Six albums in the workbook have two
+  reviews with different scores, and those would now merge into one line.
+- Neither fix is covered by an automated test; both were verified by a script we
+  ran once by hand.
+
 ## Backlog (noticed, not built yet)
+
+- **Rewrite follow-up questions into standalone ones before parsing filters.**
+  Highest priority: "Which of those is the highest rated?" currently loses the
+  earlier genre filter and the answer stops matching its own citations
+  (Improvement 9, drawbacks).
+- **Rebuild the index so `source_id` exists.** Improvements 1 and 4 added it but
+  the collection on disk predates it and reports `None` on every chunk, so
+  review-level traceability is not actually working yet.
+- **Measure `k=4` against `k=10`.** Improvement 2 chose 4 with no before/after,
+  and filters now guarantee the chunks are on-topic, so more may be better.
+- **Trim the history before sending it to the model** - it currently includes our
+  own `🔎 Filters applied` lines and source blocks.
 
 - **Gradio app crashes on every question**: MMR (Improvement 2) needs an
   embedding function passed to `Chroma(...)`; it raises

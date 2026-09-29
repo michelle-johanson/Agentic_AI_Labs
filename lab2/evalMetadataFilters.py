@@ -157,7 +157,144 @@ def answer_eval():
         print(f"  {name:<17} matching {good:>3}   non-matching {bad:>3}")
 
 
+
+
+# --- Improvement 7: the same filters on the Gradio path --------------------
+# Improvements 2-4 (MMR, confidence gate, source labels) were only in
+# gradioMusicChatbot.py and Improvement 6 (filters, metadata in the prompt) was
+# only in musicChatbot.py. This measures the Gradio retrieval path, which uses
+# MMR k=4 rather than the plain k=10 search measured above.
+
+GRADIO_K = 4
+
+
+def gradio_eval():
+    """Before/after for the Gradio path: MMR k=4, with and without the filter."""
+    import gradioMusicChatbot as app
+
+    print(f"\n{'question':<52} {'before':>7} {'after':>7}  {'gate':>10}")
+    total_before = total_after = 0
+    refused_before = refused_after = 0
+
+    for question, expected in FILTER_QUESTIONS:
+        filters, where = app.resolve_filters(question)
+
+        # "before" = what the Gradio app did prior to this change: MMR with no
+        # filter, and confidence scored over the whole collection.
+        app.retriever.search_kwargs.pop("filter", None)
+        before_docs = app.retriever.invoke(question)
+        before = sum(satisfies(d.metadata, expected) for d in before_docs)
+        before_conf = max(
+            (s for _, s in vectorstore.similarity_search_with_relevance_scores(question, k=20)),
+            default=0.0)
+
+        # "after" = filter applied to both the MMR search and the score lookup.
+        after_docs, after_conf, _ = app.retrieve_with_confidence(question)
+        after = sum(satisfies(d.metadata, expected) for d in after_docs)
+
+        gate_before = before_conf < app.RETRIEVAL_CONFIDENCE_THRESHOLD
+        gate_after = after_conf < app.RETRIEVAL_CONFIDENCE_THRESHOLD
+        refused_before += gate_before
+        refused_after += gate_after
+
+        total_before += before
+        total_after += after
+        gate = f"{'refuse' if gate_before else 'answer'}->{'refuse' if gate_after else 'answer'}"
+        print(f"{question[:51]:<52} {before:>4}/{GRADIO_K} {after:>4}/{GRADIO_K}  {gate:>10}")
+
+    app.retriever.search_kwargs.pop("filter", None)
+    n = len(FILTER_QUESTIONS)
+    print(f"\nGradio path, chunks matching the request: "
+          f"before {total_before}/{n*GRADIO_K} ({total_before/(n*GRADIO_K):.0%}), "
+          f"after {total_after}/{n*GRADIO_K} ({total_after/(n*GRADIO_K):.0%})")
+    print(f"Confidence gate refusals: before {refused_before}/{n}, after {refused_after}/{n}")
+
+    # Improvement 6 put year/genre into the CLI prompt; format_context did not.
+    sample = app.format_context(after_docs[:1]) if after_docs else ""
+    print(f"Prompt shows Year:   {'Year:' in sample}")
+    print(f"Prompt shows Genre:  {'Genre:' in sample}")
+
+
+
+
+
+# --- Improvement 8: choosing RETRIEVAL_CONFIDENCE_THRESHOLD from data ------
+# Improvement 3 set the gate to 0.5 by eye and said so. Adding filters made that
+# value wrong: a filtered search compares against a much smaller pool, so its
+# best relevance score is lower, and 6 of the 15 filter questions were refused
+# while holding 4 matching chunks each. This sweeps the threshold over questions
+# the corpus can answer and questions it cannot, and reports the trade-off.
+
+# Music questions the 1,854 reviews genuinely can answer.
+ANSWERABLE = [q for q, _ in FILTER_QUESTIONS] + NO_FILTER_QUESTIONS
+
+# Questions no album review can answer. The gate should refuse these.
+UNANSWERABLE = [
+    "What is the capital of France?",
+    "How do I fix a flat bicycle tire?",
+    "Who won the 2022 FIFA World Cup?",
+    "Give me a recipe for pizza dough.",
+    "What is Apple's current stock price?",
+    "Explain quantum entanglement to me.",
+    "Write a Python function that reverses a string.",
+    "What is the weather in Provo tomorrow?",
+    "How many calories are in a banana?",
+    "Translate 'good evening' into Japanese.",
+]
+
+
+def threshold_eval():
+    """Sweep the confidence threshold over answerable vs unanswerable questions."""
+    import gradioMusicChatbot as app
+
+    def confidence(question):
+        _, _, _ = None, None, None
+        docs, conf, filters = app.retrieve_with_confidence(question)
+        return conf, filters
+
+    print("Scoring questions the corpus CAN answer...")
+    answerable_scores = []
+    for question in ANSWERABLE:
+        conf, filters = confidence(question)
+        answerable_scores.append(conf)
+        print(f"  {conf:.3f}  {question[:58]}")
+
+    print("\nScoring questions the corpus CANNOT answer...")
+    unanswerable_scores = []
+    for question in UNANSWERABLE:
+        conf, filters = confidence(question)
+        unanswerable_scores.append(conf)
+        print(f"  {conf:.3f}  {question[:58]}")
+
+    app.retriever.search_kwargs.pop("filter", None)
+
+    n_ans, n_un = len(answerable_scores), len(unanswerable_scores)
+    print(f"\nanswerable   min {min(answerable_scores):.3f}  "
+          f"median {sorted(answerable_scores)[n_ans//2]:.3f}  max {max(answerable_scores):.3f}")
+    print(f"unanswerable min {min(unanswerable_scores):.3f}  "
+          f"median {sorted(unanswerable_scores)[n_un//2]:.3f}  max {max(unanswerable_scores):.3f}")
+
+    print(f"\n{'threshold':>9}  {'answered (want all)':>20}  {'refused (want all)':>19}  {'correct':>8}")
+    best = None
+    for step in range(0, 21):
+        threshold = step / 20
+        answered = sum(s >= threshold for s in answerable_scores)
+        refused = sum(s < threshold for s in unanswerable_scores)
+        correct = (answered + refused) / (n_ans + n_un)
+        marker = ""
+        if best is None or correct > best[1]:
+            best, marker = (threshold, correct), ""
+        print(f"{threshold:>9.2f}  {answered:>13}/{n_ans}  {refused:>12}/{n_un}  {correct:>7.0%}")
+    print(f"\nBest accuracy {best[1]:.0%} at threshold {best[0]:.2f} "
+          f"(Improvement 3 used 0.50 by eye)")
+
+
 if __name__ == "__main__":
-    main()
-    if "--answers" in sys.argv:
-        answer_eval()
+    if "--gradio" in sys.argv:
+        gradio_eval()
+    elif "--threshold" in sys.argv:
+        threshold_eval()
+    else:
+        main()
+        if "--answers" in sys.argv:
+            answer_eval()

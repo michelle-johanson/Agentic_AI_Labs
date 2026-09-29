@@ -1,4 +1,5 @@
 from langchain_chroma import Chroma
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import ChatOllama
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_core.prompts import PromptTemplate
@@ -6,6 +7,7 @@ from langchain_core.vectorstores import VectorStoreRetriever
 from pathlib import Path
 from dotenv import load_dotenv
 import json
+import os
 import re
 load_dotenv() 
 
@@ -18,10 +20,62 @@ llm = ChatOllama(model="mistral", temperature=0.7)
 # temperature=0 keeps it consistent, and format="json" makes Ollama return JSON.
 filter_llm = ChatOllama(model="mistral", temperature=0, format="json")
 
+# Third copy of mistral, used only to write the HyDE excerpt (see below).
+# Kept separate from `llm` because the chat model runs at temperature=0.7, and a
+# different excerpt on every run means the same question retrieves different
+# chunks each time - which makes a before/after eval unreadable.
+hyde_llm = ChatOllama(model="mistral", temperature=0)
+
+# The same model embedMusicChunks.py used to build the index. Chroma stores that
+# model in the collection config, so plain similarity search worked without
+# naming it here - but MMR has to embed the query in Python to compare
+# candidates with each other, and raises ValueError without this.
+embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+
 vectorstore = Chroma(
     collection_name="musicReviews",
-    persist_directory=chroma_path
+    persist_directory=chroma_path,
+    embedding_function=embeddings,
 )
+
+# --- HyDE: Hypothetical Document Embeddings --------------------------------
+# A question like "something for a rainy day" shares almost no words with
+# Pitchfork review prose, so its embedding lands nearer to whatever chunks are
+# generically popular than to mood-matched ones. HyDE closes that vocabulary
+# gap: ask the model to write the review excerpt it thinks would answer the
+# question, then run the vector search with that excerpt instead of the
+# question. The chunks we want are written in the same register as the excerpt,
+# so they sit closer to it in vector space.
+
+# Set HYDE_ENABLED=0 to turn HyDE off without editing code, so the same script
+# can produce both arms of a before/after eval.
+HYDE_ENABLED = os.getenv("HYDE_ENABLED", "1").lower() not in ("0", "false", "no")
+
+HYDE_PROMPT = PromptTemplate(
+    template="""Write a 2-3 sentence excerpt from a Pitchfork music review that would
+directly satisfy the following request. Use the same vocabulary and tone as a real
+music review. Write only the excerpt, no preamble or explanation.
+
+Request: {query}
+
+Review excerpt:""",
+    input_variables=["query"],
+)
+
+
+def generate_hypothetical_document(query):
+    """Return a made-up review excerpt to search with, or the question itself.
+
+    Any failure (Ollama down, an empty answer) falls back to the original
+    question, so a broken HyDE call degrades to the previous behaviour rather
+    than searching with nothing.
+    """
+    try:
+        excerpt = hyde_llm.invoke(HYDE_PROMPT.format(query=query)).content.strip()
+    except Exception:
+        return query
+    return excerpt or query
+
 
 class LabeledRetriever(VectorStoreRetriever):
     """Normal retriever that tidies metadata so every chunk can be labeled.
@@ -31,10 +85,30 @@ class LabeledRetriever(VectorStoreRetriever):
     those fields. ~3,300 chunks have no genre and ~600 have no year, so fill in
     "unknown", and show years as 2023 instead of 2023.0. The original embedding
     script leaves missing fields out; the newer one stores "", so handle both.
+
+    It also applies HyDE. Unless a metadata filter is active, the question is
+    swapped for a generated review excerpt for the vector search only - the
+    model still answers the user's real question, and `last_hypothetical` keeps
+    the excerpt around so the CLI can show what was actually searched for.
     """
 
+    # Declared as a field because VectorStoreRetriever is a pydantic model and
+    # will not accept an attribute that was never declared.
+    last_hypothetical: str = ""
+
     def _get_relevant_documents(self, query, *, run_manager, **kwargs):
-        docs = super()._get_relevant_documents(query, run_manager=run_manager, **kwargs)
+        # Hector gated HyDE on "does the question name a genre". Improvement 6
+        # already answers a wider version of that question, so reuse its result
+        # instead of adding a second genre detector: when parse_filters found a
+        # year/genre/score constraint, the main loop has put a `filter` in
+        # search_kwargs and the search space is already narrow.
+        if HYDE_ENABLED and not self.search_kwargs.get("filter"):
+            self.last_hypothetical = generate_hypothetical_document(query)
+            search_query = self.last_hypothetical
+        else:
+            self.last_hypothetical = ""
+            search_query = query
+        docs = super()._get_relevant_documents(search_query, run_manager=run_manager, **kwargs)
         for doc in docs:
             metadata = dict(doc.metadata)
             for key in ("year", "genre"):
@@ -251,6 +325,11 @@ if __name__ == "__main__":
         result = chat_chain.invoke({"question": query, "chat_history": chat_history})
         answer = result["answer"]
         print("\n🎧 Response:\n", answer)
+
+        # Hector's own writeup notes that a bad hypothetical degrades retrieval
+        # "silently with no warning to the user" - printing it fixes that.
+        if retriever.last_hypothetical:
+            print(f"\n🧪 HyDE search text: {retriever.last_hypothetical}")
 
         print("\n📄 Sources:")
         for i, doc in enumerate(result["source_documents"], 1):
