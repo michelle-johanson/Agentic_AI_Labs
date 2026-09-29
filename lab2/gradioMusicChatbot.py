@@ -1,170 +1,69 @@
-from langchain_chroma import Chroma
-from langchain_ollama import ChatOllama
-from langchain_core.prompts import PromptTemplate
-from pathlib import Path
-from dotenv import load_dotenv
+"""Gradio music recommendation chatbot.
+
+All the RAG logic lives in musicRagCore.py, shared with musicChatbot.py. This
+file only chooses the configuration and renders the UI:
+
+    model      phi3, temperature 0.4
+    retrieval  MMR, k=4 selected from fetch_k=20
+
+The terminal chatbot uses mistral and plain search with k=10, which Step 4 of
+the lab asks us to compare - those are settings passed in here, not a second
+copy of the pipeline.
+"""
+
 import os
+
 import gradio as gr
+from dotenv import load_dotenv
+from langchain_ollama import ChatOllama
+
+import musicRagCore as core
 
 load_dotenv()
 
-script_dir = Path(__file__).parent
-chroma_path = script_dir / "chroma"
-
 llm = ChatOllama(model="phi3", temperature=0.4)
+retriever = core.make_retriever(search_type="mmr", k=4, fetch_k=20, lambda_mult=0.5)
 
+# Chosen by sweeping 20 answerable and 10 unanswerable questions
+# (`python evalMetadataFilters.py --threshold`), not by eye. 0.35 answers 20/20
+# real questions and refuses 7/10 off-topic ones. 0.50 was set before filters
+# existed and refused 6 of 15 filter questions that had 4 matching chunks each.
 RETRIEVAL_CONFIDENCE_THRESHOLD = float(
-    os.getenv("RETRIEVAL_CONFIDENCE_THRESHOLD", "0.5")
-)
-REFUSAL_MESSAGE = (
-    "I don't have enough relevant evidence in the Pitchfork reviews to answer "
-    "that reliably. Please try a more specific music question."
+    os.getenv("RETRIEVAL_CONFIDENCE_THRESHOLD", str(core.DEFAULT_CONFIDENCE_THRESHOLD))
 )
 
-vectorstore = Chroma(
-    collection_name="musicReviews",
-    persist_directory=chroma_path
-)
-
-retriever = vectorstore.as_retriever(
-    search_type="mmr",
-    search_kwargs={"k": 4, "fetch_k": 20, "lambda_mult": 0.5},
-)
-
-qa_prompt = PromptTemplate(
-    template="""You are a knowledgeable music recommendation assistant with expertise in album reviews and music analysis. 
-Your role is to help users discover music based on their preferences and provide insightful recommendations.
-
-Use the following context from music reviews and album information to answer the user's question.
-If you don't know the answer based on the context, say so honestly - don't make up information.
-
-When recommending music:
-- Consider the mood, genre, and style preferences
-- Explain why you're making specific recommendations
-- Reference specific albums, artists, or tracks when relevant
-- Identify the supporting artist and review title using the provided [Source N] labels
-- Be enthusiastic but honest about the music
-
-If you encounter explicit terms in the names of artists, albums, or song titles, blur them out with the
-use of asterisks so that the user does not see the full explicit word.
-
-Context from reviews (each source includes its artist and review title):
-{context}
-
-Chat History:
-{chat_history}
-
-User question: {question}
-
-Please provide a helpful response based on the music reviews and context available. Keep your answer grounded in the provided sources and cite supporting sources as [Source N].""",
-    input_variables=["context", "chat_history", "question"]
-)
-
-chat_history = []
-
-
-def retrieve_with_confidence(query):
-    """Retrieve with MMR, then attach relevance scores for the confidence gate.
-
-    LangChain's MMR retriever returns documents without scores. The second
-    lookup only obtains normalized relevance scores for the selected chunks;
-    the documents sent to the model are still exactly the MMR results.
-    """
-    documents = retriever.invoke(query)
-    if not documents:
-        return [], 0.0
-
-    scored_documents = vectorstore.similarity_search_with_relevance_scores(
-        query, k=20
-    )
-    score_by_key = {
-        (doc.metadata.get("source_id"), doc.page_content): float(score)
-        for doc, score in scored_documents
-    }
-
-    selected = []
-    for document in documents:
-        key = (document.metadata.get("source_id"), document.page_content)
-        score = score_by_key.get(key, 0.0)
-        document.metadata = {
-            **document.metadata,
-            "retrieval_confidence": score,
-        }
-        selected.append(document)
-
-    return selected, max(
-        document.metadata["retrieval_confidence"] for document in selected
-    )
-
-
-def format_context(documents):
-    formatted = []
-    for source_number, document in enumerate(documents, 1):
-        metadata = document.metadata
-        formatted.append(
-            f"[Source {source_number}]\n"
-            f"Artist: {metadata.get('artist', 'Unknown artist')}\n"
-            f"Review title: {metadata.get('title', metadata.get('album', 'Unknown title'))}\n"
-            f"Score: {metadata.get('score', 'Unknown')}\n"
-            f"Review excerpt: {document.page_content}"
-        )
-    return "\n\n".join(formatted)
-
-
-def format_sources(documents):
-    """Display one traceable artist/title entry per source review."""
-    seen_source_ids = set()
-    source_lines = []
-    for source_number, document in enumerate(documents, 1):
-        metadata = document.metadata
-        source_id = metadata.get("source_id", f"chunk-{source_number}")
-        if source_id in seen_source_ids:
-            continue
-        seen_source_ids.add(source_id)
-        artist = metadata.get("artist", "Unknown artist")
-        title = metadata.get("title", metadata.get("album", "Unknown title"))
-        source_lines.append(
-            f"- [Source {source_number}] {artist} — {title} ({source_id})"
-        )
-    return "\n\nSupporting Pitchfork reviews:\n" + "\n".join(source_lines)
-
-
-def format_chat_history():
-    return "\n".join(
-        f"User: {question}\nAssistant: {answer}"
-        for question, answer in chat_history
-    ) or "(No previous conversation.)"
 
 def get_response(message, history):
-    documents, best_confidence = retrieve_with_confidence(message)
+    """Answer one question and return this session's updated message list.
 
-    # This gate runs before phi3 is invoked. The default is a starting point;
-    # production deployments should set it from a held-out validation set.
-    if best_confidence < RETRIEVAL_CONFIDENCE_THRESHOLD:
-        answer = REFUSAL_MESSAGE
-    else:
-        prompt = qa_prompt.format(
-            context=format_context(documents),
-            chat_history=format_chat_history(),
-            question=message,
-        )
-        response = llm.invoke(prompt)
-        answer = response.content if hasattr(response, "content") else str(response)
-        answer = f"{answer}{format_sources(documents)}"
-      
-    # Update chat history
-    chat_history.append((message, answer))
+    `history` is the Chatbot component's own value, which Gradio keeps per
+    session, so two visitors cannot see each other's conversation.
+    """
+    result = core.answer(message, history, llm, retriever,
+                         threshold=RETRIEVAL_CONFIDENCE_THRESHOLD)
 
-    history = history or []
+    answer_text = result["answer"]
+    if not result["refused"]:
+        notes = []
+        if result["search_question"] != message:
+            notes.append(f"↻ Searched for: {result['search_question']}")
+        if result["filters"]:
+            notes.append(f"🔎 Filters applied: {result['filters']}")
+        if notes:
+            answer_text = "\n".join(notes) + "\n\n" + answer_text
+        answer_text += core.format_sources(result["documents"])
+
+    history = list(history or [])
     history.append({"role": "user", "content": message})
-    history.append({"role": "assistant", "content": answer})
+    history.append({"role": "assistant", "content": answer_text})
     return history
 
+
 def clear_history():
-    """Clear chat history."""
-    global chat_history
-    chat_history = []
+    """Clear this session's chat. Returning None empties the Chatbot component,
+    and since history lives on that component, other visitors are untouched."""
     return None
+
 
 # Create Gradio interface
 with gr.Blocks(title="Music Recommendation Chatbot") as demo:
@@ -210,6 +109,7 @@ with gr.Blocks(title="Music Recommendation Chatbot") as demo:
             - Local ChromaDB vector storage
             - Music review embeddings
             - MMR retrieval with a confidence gate
+            - Year / genre / score filters
             - Phi-3 LLM via Ollama
             """)
     

@@ -6,12 +6,22 @@ from chromadb.utils import embedding_functions
 from chromadb import PersistentClient
 from pathlib import Path
 from dotenv import load_dotenv
+import os
 import time
 
 load_dotenv()
 
 script_dir = Path(__file__).parent
 chroma_path = script_dir / "chroma"
+
+# Same pattern as Lab 1's createChromadb.py: keep the build settings together
+# near the top, and let EMBED_MODEL select a different model without editing
+# the script. Re-running always replaces the one musicReviews collection.
+EMBED_MODEL = os.getenv(
+    "EMBED_MODEL", "sentence-transformers/all-mpnet-base-v2"
+)
+CHUNK_SIZE = 300
+CHUNK_OVERLAP = 50
 
 # Use the production-data name when available, while retaining compatibility
 # with the v3 workbook currently checked into this lab.
@@ -26,10 +36,14 @@ if dataset_path is None:
 
 df = pd.read_excel(dataset_path)
 
-splitter = RecursiveCharacterTextSplitter(chunk_size=300, chunk_overlap=50)
+splitter = RecursiveCharacterTextSplitter(
+    chunk_size=CHUNK_SIZE,
+    chunk_overlap=CHUNK_OVERLAP,
+)
 
 texts = []
 metadatas = []
+ids = []
 
 
 def metadata_value(value):
@@ -68,12 +82,26 @@ for row_number, (_, row) in enumerate(df.iterrows()):
         "label": metadata_value(row["label"]),
         "reviewdate": metadata_value(row["review_date"]),
     }
-    for chunk in chunks:
-        texts.append(chunk)
-        metadatas.append(metadata.copy())
+    header = (
+        f"Artist: {metadata['artist']}\n"
+        f"Album: {metadata['album']}\n"
+        f"Year: {metadata['year']}\n"
+        f"Genre: {metadata['genre']}\n"
+        f"Pitchfork score: {metadata['score']}"
+    )
+    for chunk_number, chunk in enumerate(chunks):
+        # A review excerpt often does not name its own artist or album. Repeating
+        # this short identity header gives every chunk enough context to match a
+        # name-based query and lets the embedding represent its metadata.
+        texts.append(f"{header}\n\n{chunk}")
+        chunk_metadata = metadata.copy()
+        chunk_metadata["chunk"] = chunk_number
+        chunk_metadata["n_chunks"] = len(chunks)
+        metadatas.append(chunk_metadata)
+        ids.append(f"{source_id}_chunk_{chunk_number:04d}")
 
 sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name="sentence-transformers/all-mpnet-base-v2"
+    model_name=EMBED_MODEL
 )
 
 client = chromadb.PersistentClient(
@@ -90,13 +118,17 @@ if "musicReviews" in [
 
 collection = client.create_collection(
     name="musicReviews",
-    embedding_function=sentence_transformer_ef
+    embedding_function=sentence_transformer_ef,
 )
 
 BATCH_SIZE = 1000
 
 print(f"Length of texts: {len(texts)}")
 print(f"Total batches to encode and load: {len(texts)/BATCH_SIZE}")
+print(
+    f"Building musicReviews with {EMBED_MODEL}, "
+    f"chunk_size={CHUNK_SIZE}, chunk_overlap={CHUNK_OVERLAP}"
+)
 
 start_time = time.perf_counter()
 
@@ -110,10 +142,7 @@ for i in range(0, len(texts), BATCH_SIZE):
     collection.add(
         documents=batch_texts,
         metadatas=batch_metadatas,
-        ids=[
-            f"{metadata['source_id']}_chunk_{i + offset}"
-            for offset, metadata in enumerate(batch_metadatas)
-        ]
+        ids=ids[i:i + BATCH_SIZE],
     )
     
     print(f"✓ Processed {min(i + BATCH_SIZE, len(texts))}/{len(texts)} chunks")
@@ -122,4 +151,7 @@ end_time = time.perf_counter()
 execution_time = end_time - start_time
 print(f"Execution time: {execution_time:.6f} seconds")
 
-print("✅ All documents added successfully!")
+print(
+    f"✅ Rebuilt musicReviews with {collection.count()} chunks. "
+    "Run this script again whenever you change the model or chunk settings."
+)
