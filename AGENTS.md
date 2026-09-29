@@ -4,11 +4,12 @@ Each lab has a baseline system from the instructor, and my job is to find and bu
 
 ## How I want to work
 
-- Explain the baseline code before changing it — what each file does, and how to read anything unusual. Assume I have some experiance with Python but don't code with it regularly.
+- Explain the baseline code before changing it — what each file does, and how to read anything unusual. I have some experiance with Python but don't code with it regularly.
 - Show me the problems in the *actual data* (run queries, print counts), not generic advice about the topic. Concrete failures are what give me ideas.
 - Give me a chance to spot things myself before you list your own ideas. Ask me which problem bugs me most and what I'd try. Tell me if my idea is a good direction and what it'd cost.
 - One improvement at a time. Build it, measure it, write it up, then go looking for the next thing.
 - Keep a short backlog of ideas we noticed but haven't built.
+- Don't run the venv in a shell. For long commands and processes, ask me to run it.
 
 ## Building an improvement
 
