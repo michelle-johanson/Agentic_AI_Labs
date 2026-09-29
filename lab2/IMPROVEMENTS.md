@@ -380,7 +380,7 @@ could see "year: 2023", it answered from them.
 - **Only in the terminal chatbot.** `gradioMusicChatbot.py` (Improvements 2–4)
   does not have it yet, and currently fails on every question (see backlog).
 
-## Improvement 7: One pipeline for both chatbots
+## Improvement 7: One filter pipeline for both chatbots
 
 *Reproduce with `python lab2/evalMetadataFilters.py --gradio`.*
 
@@ -683,13 +683,145 @@ Re-ran the Improvement 7 eval afterwards: chunks matching the request still
   reviews with different scores, and those would now merge into one line.
 - Neither fix is covered by an automated test; both were verified by a script we
   ran once by hand.
+- **Improvement 7 only unified the filters.** The prompt text, the metadata
+  formatting, the confidence gate and the source citations were still duplicated
+  or present in only one chatbot. Improvement 10 finishes it.
+
+## Improvement 10: A shared core so the two chatbots cannot drift
+
+*Reproduce with `python lab2/evalMetadataFilters.py`, `--gradio`, `--threshold`.*
+
+### Plain-language summary
+
+Improvement 7 let the Gradio app import the filter functions, which stopped the
+worst of the drift but not all of it: each chatbot still had its own copy of the
+prompt, its own way of showing metadata to the model, and features the other one
+lacked. We moved every shared piece into one module. Doing that also let us fix
+the most serious bug we knew about, where a follow-up question lost the filter
+from the question before it.
+
+### 1. What we extended
+
+**New `musicRagCore.py`** holds one definition of each piece:
+`vectorstore` and `embeddings`, `parse_filters`, `build_where`, `resolve_filters`,
+`QA_PROMPT`, `format_context`, `format_sources`, `format_chat_history`,
+`make_retriever`, `retrieve` (search + confidence scores) and `answer` (one
+question end to end). Nothing in it imports either chatbot, so there is no
+import cycle.
+
+**`musicChatbot.py` went from 261 lines to 91** and
+**`gradioMusicChatbot.py` from 260 to 160.** Both now only pick configuration
+and render output:
+
+| | `musicChatbot.py` | `gradioMusicChatbot.py` |
+|---|---|---|
+| model | mistral, temp 0.7 | phi3, temp 0.4 |
+| retrieval | similarity, `k=10` | MMR, `k=4` from `fetch_k=20` |
+
+Those two differences are deliberate -- Step 4 asks us to compare models and
+top-k -- so they are arguments to `make_retriever` and `answer`, not copied code.
+Everything else is now identical by construction.
+
+**`condense_question(question, history)`** (new): rewrites a follow-up into a
+standalone question *before* the filters are parsed, using mistral at
+temperature 0. This is the fix for Improvement 9's main drawback. If the rewrite
+comes back empty or longer than 300 characters -- a small local model sometimes
+answers instead of rewriting -- it falls back to the original question.
+
+**Both chatbots gained what the other had.** The CLI now has the confidence gate
+and the `[Source N]` citations it never had; the Gradio app now uses the same
+`QA_PROMPT` and metadata formatting as the CLI. `ConversationalRetrievalChain`
+and `LabeledRetriever` are gone -- `answer()` does the retrieve/gate/format/ask
+steps explicitly, which is what made the condense step possible to insert.
+
+**`evalMetadataFilters.py`** now imports from the core. `answer_eval()` no longer
+builds three LangChain chains; it varies the two things that actually differed
+(filter applied or not, metadata labels or raw text).
+
+### 2. Why this and not the alternatives
+
+- **Leave it as Improvement 7 had it and just fix the memo wording.** Honest, and
+  we nearly did this. But the two prompts had already drifted apart once (the
+  Gradio one had `[Source N]` instructions the CLI one lacked), which is evidence
+  that they would drift again.
+- **Have the CLI import from the Gradio app instead of a third file.** Avoids a
+  new file, but then running the terminal chatbot imports `gradio` and builds a
+  web UI object for nothing.
+- **Make the two chatbots identical, including model and top-k.** That would be
+  real parity, but it throws away the comparison Step 4 asks for. Sharing the
+  code and parameterising the settings keeps both.
+- **Use `ConversationalRetrievalChain`'s built-in question condensing** rather
+  than writing `condense_question`. The chain does have this, and the CLI was
+  getting it for free. But the chain re-retrieves internally, so the confidence
+  gate cannot see the documents before the model is called, and the Gradio app
+  never used the chain at all. Writing the step explicitly gives both chatbots
+  the same behaviour.
+
+### 3. Benefits
+
+**Duplication, counted with `grep`:**
+
+| Defined in | Before | After |
+|---|---|---|
+| `QA_PROMPT` / `qa_prompt` | both files | **core only** |
+| metadata into the prompt | `document_prompt` (CLI) + `format_context` (Gradio) | **core only** |
+| `format_sources` citations | Gradio only | **core, both use it** |
+| confidence gate | Gradio only | **core, both use it** |
+| `parse_filters`, `build_where` | core (Imp. 7) | core |
+| front-end line counts | 261 + 260 | **91 + 160** |
+
+**The follow-up bug, same two turns as Improvement 9's drawback:**
+
+| | Before | After |
+|---|---|---|
+| Question searched | "Which of those is the highest rated?" | "What is the highest-rated **jazz** album among the recommendations provided?" |
+| Filters | `{'min_score': 9.0}` — Jazz lost | `{'genre': 'Jazz', 'min_score': 9.0}` |
+| Sources retrieved | Viktor Vaughn, Faust, Mastodon, Peter Gabriel | Coltrane, Miles Davis ×2, Keith Jarrett |
+| Answer supported by its own citations | **no** | **yes** (*A Love Supreme* is Source 1) |
+
+**No regression.** All three earlier evals reproduce their numbers exactly after
+the refactor:
+
+| Eval | Metric | Before refactor | After refactor |
+|---|---|---|---|
+| Improvement 6 | CLI chunks matching | 140/150 (93%) | **140/150 (93%)** |
+| Improvement 6 | filters extracted exactly | 15/15 | **15/15** |
+| Improvement 6 | no-filter questions unchanged | 10/10 each | **10/10 each** |
+| Improvement 7 | Gradio chunks matching | 56/60 (93%) | **56/60 (93%)** |
+| Improvement 7 | wrong refusals | 0/15 | **0/15** |
+| Improvement 8 | best threshold / accuracy | 0.35 / 90% | **0.35 / 90%** |
+
+### 4. Drawbacks and tradeoffs
+
+- **The condense step adds a second LLM call to every question that has
+  history.** Filter extraction already averaged ~5s; a follow-up now pays that
+  twice. The first question in a conversation is unaffected, because
+  `condense_question` returns immediately when history is empty.
+- **The rewrite can itself be wrong.** Mistral at temperature 0 is reliable on
+  our examples, but a bad rewrite now corrupts both the filters and the search,
+  where before only the follow-up was weak. The 300-character guard catches a
+  model that answers instead of rewriting; it does not catch a confident bad
+  rewrite.
+- **We did add the new file we earlier argued against.** Three files instead of
+  two, and `musicRagCore.py` is long. The trade we accepted is one long shared
+  file over two short divergent ones.
+- **Dropping `ConversationalRetrievalChain` means we no longer get its condensing
+  for free**, and our replacement is the thing we now have to maintain.
+- **The CLI's behaviour changed**, not just its structure: it now refuses
+  low-confidence questions, which it never did. That is the threshold from
+  Improvement 8, which was tuned on the *Gradio* configuration (MMR, `k=4`). It
+  has not been re-swept for the CLI's plain `k=10` search, so the CLI may refuse
+  more or less readily than is ideal.
+- **`condense_question` is not in the eval.** Every eval question is a single
+  turn with empty history, so the condense path is measured only by the one
+  two-turn example above. A multi-turn eval set is the obvious next thing.
 
 ## Backlog (noticed, not built yet)
 
-- **Rewrite follow-up questions into standalone ones before parsing filters.**
-  Highest priority: "Which of those is the highest rated?" currently loses the
-  earlier genre filter and the answer stops matching its own citations
-  (Improvement 9, drawbacks).
+- **Re-sweep the confidence threshold for the CLI's configuration.** 0.35 was
+  tuned on MMR with k=4; the CLI now uses that gate with plain search at k=10.
+- **Build a multi-turn eval set.** `condense_question` (Improvement 10) is only
+  demonstrated on one two-turn example.
 - **Rebuild the index so `source_id` exists.** Improvements 1 and 4 added it but
   the collection on disk predates it and reports `None` on every chunk, so
   review-level traceability is not actually working yet.

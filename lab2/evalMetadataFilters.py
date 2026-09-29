@@ -12,9 +12,9 @@ Add --answers to also generate full chatbot answers (slow, ~5 minutes).
 import sys
 import time
 import pandas as pd
-from langchain_classic.chains import ConversationalRetrievalChain
+import musicRagCore as core
 from musicChatbot import (vectorstore, parse_filters, build_where, llm, qa_prompt,
-                          retriever, chat_chain, script_dir)
+                          retriever, script_dir)
 
 K = 10
 
@@ -124,39 +124,45 @@ def albums_named(answer, reviews):
 
 
 def answer_eval():
-    """Generate real answers with three setups and count the albums they name."""
-    reviews = pd.read_excel(script_dir / "pitchfork_reviews_v3.xlsx")
-    baseline_chain = ConversationalRetrievalChain.from_llm(   # the original lab code
-        llm=llm, retriever=vectorstore.as_retriever(search_kwargs={"k": 10}),
-        return_source_documents=True, combine_docs_chain_kwargs={"prompt": qa_prompt})
-    filters_only_chain = ConversationalRetrievalChain.from_llm(  # filters, no labels
-        llm=llm, retriever=retriever,
-        return_source_documents=True, combine_docs_chain_kwargs={"prompt": qa_prompt})
-    setups = [("baseline", baseline_chain), ("filters only", filters_only_chain),
-              ("filters + labels", chat_chain)]
+    """Generate real answers with three setups and count the albums they name.
 
-    totals = {name: [0, 0] for name, _ in setups}
+    Rewritten for the shared core: the setups differ only in whether the filter
+    is applied and whether the context carries metadata labels, which is exactly
+    what the ConversationalRetrievalChain versions compared before.
+    """
+    reviews = pd.read_excel(script_dir / "pitchfork_reviews_v3.xlsx")
+
+    def raw_context(documents):
+        """The chain's old default document template: text with no metadata."""
+        return "\n\n".join(d.page_content for d in documents)
+
+    setups = [("baseline", False, raw_context),
+              ("filters only", True, raw_context),
+              ("filters + labels", True, core.format_context)]
+
+    totals = {name: [0, 0] for name, _, _ in setups}
     for question, expected in ANSWER_QUESTIONS:
         reviews["expected"] = [expected] * len(reviews)
-        where = build_where(parse_filters(question))
+        _, where = core.resolve_filters(question)
         print(f"\nQ: {question}")
-        for name, chain in setups:
-            retriever.search_kwargs.pop("filter", None)
-            if where and name != "baseline":
-                retriever.search_kwargs["filter"] = where
-            answer = chain.invoke({"question": question, "chat_history": []})["answer"]
-            good, bad = albums_named(answer, reviews)
+        for name, use_filter, format_fn in setups:
+            documents, _ = core.retrieve(question, retriever, where if use_filter else None)
+            answer = llm.invoke(core.QA_PROMPT.format(
+                context=format_fn(documents),
+                chat_history="(No previous conversation.)",
+                question=question,
+            ))
+            text = answer.content if hasattr(answer, "content") else str(answer)
+            good, bad = albums_named(text, reviews)
             totals[name][0] += len(good)
             totals[name][1] += len(bad)
             print(f"  {name:<17} matching albums named: {len(good)}  non-matching: {len(bad)}")
-            print(f"    {' '.join(answer.split())[:300]}...")
+            print(f"    {' '.join(text.split())[:300]}...")
     retriever.search_kwargs.pop("filter", None)
 
     print("\nTotals across questions (dataset albums named in answers):")
     for name, (good, bad) in totals.items():
         print(f"  {name:<17} matching {good:>3}   non-matching {bad:>3}")
-
-
 
 
 # --- Improvement 7: the same filters on the Gradio path --------------------
@@ -177,7 +183,7 @@ def gradio_eval():
     refused_before = refused_after = 0
 
     for question, expected in FILTER_QUESTIONS:
-        filters, where = app.resolve_filters(question)
+        filters, where = core.resolve_filters(question)
 
         # "before" = what the Gradio app did prior to this change: MMR with no
         # filter, and confidence scored over the whole collection.
@@ -189,7 +195,7 @@ def gradio_eval():
             default=0.0)
 
         # "after" = filter applied to both the MMR search and the score lookup.
-        after_docs, after_conf, _ = app.retrieve_with_confidence(question)
+        after_docs, after_conf = core.retrieve(question, app.retriever, where)
         after = sum(satisfies(d.metadata, expected) for d in after_docs)
 
         gate_before = before_conf < app.RETRIEVAL_CONFIDENCE_THRESHOLD
@@ -210,7 +216,7 @@ def gradio_eval():
     print(f"Confidence gate refusals: before {refused_before}/{n}, after {refused_after}/{n}")
 
     # Improvement 6 put year/genre into the CLI prompt; format_context did not.
-    sample = app.format_context(after_docs[:1]) if after_docs else ""
+    sample = core.format_context(after_docs[:1]) if after_docs else ""
     print(f"Prompt shows Year:   {'Year:' in sample}")
     print(f"Prompt shows Genre:  {'Genre:' in sample}")
 
@@ -248,8 +254,8 @@ def threshold_eval():
     import gradioMusicChatbot as app
 
     def confidence(question):
-        _, _, _ = None, None, None
-        docs, conf, filters = app.retrieve_with_confidence(question)
+        filters, where = core.resolve_filters(question)
+        _, conf = core.retrieve(question, app.retriever, where)
         return conf, filters
 
     print("Scoring questions the corpus CAN answer...")
