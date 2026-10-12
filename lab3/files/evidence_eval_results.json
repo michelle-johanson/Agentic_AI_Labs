@@ -1,0 +1,186 @@
+{
+  "totals": [
+    {
+      "case": "altered_case",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 0
+    },
+    {
+      "case": "altered_punctuation",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 0
+    },
+    {
+      "case": "invented_quote",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 0
+    },
+    {
+      "case": "stitched_passages",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 0
+    },
+    {
+      "case": "verbatim",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 3
+    },
+    {
+      "case": "whitespace_only",
+      "tested": 3,
+      "before_accepted": 3,
+      "after_accepted": 3
+    }
+  ],
+  "rows": [
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "verbatim",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "whitespace_only",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "invented_quote",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "altered_punctuation",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "altered_case",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "costco10K.pdf",
+      "chunk_index": 28,
+      "case": "stitched_passages",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "verbatim",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "whitespace_only",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "invented_quote",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "altered_punctuation",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "altered_case",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "eliLilly10K.pdf",
+      "chunk_index": 114,
+      "case": "stitched_passages",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "verbatim",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "whitespace_only",
+      "before_source_check": true,
+      "after_source_check": true,
+      "expected": true
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "invented_quote",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "altered_punctuation",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "altered_case",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    },
+    {
+      "file": "tesla10K.pdf",
+      "chunk_index": 18,
+      "case": "stitched_passages",
+      "before_source_check": true,
+      "after_source_check": false,
+      "expected": false
+    }
+  ]
+}
