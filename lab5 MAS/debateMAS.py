@@ -49,21 +49,6 @@ buy_advocate = create_agent(
     ),
 )
 
-# Neutral third-party agent that verifies the most specific factual claim
-# from each side after every round. It has web_search access so it can
-# actually check the claims rather than just re-state them.
-fact_checker = create_agent(
-    model,
-    tools=[web_search],
-    system_prompt=(
-        "You are a neutral fact-checker in a debate. "
-        "Pick the single most specific, verifiable factual claim from each side's argument. "
-        "Use web_search to check each claim. "
-        "Return a 2-3 sentence summary: state whether each claim is supported, "
-        "contradicted, or unverifiable based on what you found. Be concise and neutral."
-    ),
-)
-
 
 def _extract_urls(raw_content) -> list[str]:
     """
@@ -85,18 +70,60 @@ def _extract_urls(raw_content) -> list[str]:
     return [r.get("url") for r in results if isinstance(r, dict) and r.get("url")]
 
 
-def _describe_tool_usage(label: str, messages) -> None:
+NO_SEARCH_NOTE = "No web search on this turn."
+
+
+def _collect_search_record(messages) -> dict:
     """
-    Prints every tool call's name + arguments (the actual search query
-    sent) and, when parseable, every URL the tool returned. This is the
-    only reliable way to confirm a tool fired -- the agent's final
-    argument text alone can look authoritative with zero search behind
-    it.
+    Pull the search facts out of one advocate invoke: how many tool calls
+    fired, the arguments sent, and every URL that parsed out of a tool
+    result. The argument text is not a reliable record of this -- a
+    paragraph can cite prices with no search behind it.
     """
-    saw_any_call = False
+    tool_calls = 0
+    queries: list[str] = []
+    urls: list[str] = []
     for message in messages:
         for call in getattr(message, "tool_calls", None) or []:
-            saw_any_call = True
+            tool_calls += 1
+            queries.append(f"{call.get('name')} {call.get('args')}")
+        if getattr(message, "type", None) == "tool":
+            urls.extend(_extract_urls(message.content))
+    return {"tool_calls": tool_calls, "queries": queries, "urls": urls}
+
+
+def _format_search_record(record: dict) -> str:
+    """
+    Text the other advocate and the moderator actually read. The zero-search
+    line is written here, in code, so it does not depend on the model
+    admitting that it skipped the tool.
+    """
+    if record["tool_calls"] == 0:
+        return NO_SEARCH_NOTE
+
+    lines = [f"Web searches this turn: {record['tool_calls']}"]
+    if record["queries"]:
+        lines.append("Queries:")
+        lines.extend(f"- {query}" for query in record["queries"])
+    if record["urls"]:
+        lines.append("URLs returned:")
+        lines.extend(f"- {url}" for url in record["urls"])
+    else:
+        lines.append("No URLs could be parsed from the tool results.")
+    return "\n".join(lines)
+
+
+def _describe_tool_usage(label: str, messages) -> dict:
+    """
+    Print every tool call's name + arguments (the actual search query
+    sent) and, when parseable, every URL the tool returned. Returns the
+    count, queries, and parsed URLs so the debate state can keep them.
+    A tool result that does not parse still prints a 200-character
+    preview here; that preview is not copied into the state.
+    """
+    record = _collect_search_record(messages)
+    for message in messages:
+        for call in getattr(message, "tool_calls", None) or []:
             print(f"[{label}] called {call.get('name')} with args: {call.get('args')}")
 
         if getattr(message, "type", None) == "tool":
@@ -109,18 +136,29 @@ def _describe_tool_usage(label: str, messages) -> None:
                 preview = str(message.content)[:200]
                 print(f"[{label}] tool returned (no URLs parsed out; raw preview): {preview}")
 
-    if not saw_any_call:
+    if record["tool_calls"] == 0:
         print(f"[{label}] made NO tool calls -- this argument is from the model's own knowledge only.")
+    return record
+
+
+def _opponent_block(side: str, argument: str, sources: str) -> str:
+    return (
+        f"The {side} side just argued:\n{argument}\n\n"
+        "Search record for that argument (written by the program, not by the advocate):\n"
+        f"{sources}\n\n"
+        "Rebut their argument and strengthen your case."
+    )
 
 
 class DebateState(TypedDict):
     case: str
     position_a: str
     position_b: str
+    sources_a: str
+    sources_b: str
     round: int
     max_rounds: int
     resolution: str
-    fact_check_notes: list[str]  # one entry per round, appended by fact_checker
 
 
 def agent_position_a(state: DebateState) -> dict:
@@ -129,75 +167,58 @@ def agent_position_a(state: DebateState) -> dict:
     else:
         user_content = (
             f"Case:\n{state['case']}\n\n"
-            f"The BUY side just argued:\n{state['position_b']}\n\n"
-            "Rebut their argument and strengthen your case."
+            + _opponent_block("BUY", state["position_b"], state["sources_b"])
         )
 
     result = build_advocate.invoke(
         {"messages": [{"role": "user", "content": user_content}]}
     )
-    _describe_tool_usage("build_advocate", result["messages"])
-    return {"position_a": result["messages"][-1].text, "round": state["round"] + 1}
+    record = _describe_tool_usage("build_advocate", result["messages"])
+    return {
+        "position_a": result["messages"][-1].text,
+        "sources_a": _format_search_record(record),
+        "round": state["round"] + 1,
+    }
 
 
 def agent_position_b(state: DebateState) -> dict:
     user_content = (
         f"Case:\n{state['case']}\n\n"
-        f"The BUILD side just argued:\n{state['position_a']}\n\n"
-        "Rebut their argument and strengthen your case."
+        + _opponent_block("BUILD", state["position_a"], state["sources_a"])
     )
 
     result = buy_advocate.invoke(
         {"messages": [{"role": "user", "content": user_content}]}
     )
-    _describe_tool_usage("buy_advocate", result["messages"])
-    return {"position_b": result["messages"][-1].text}
+    record = _describe_tool_usage("buy_advocate", result["messages"])
+    return {
+        "position_b": result["messages"][-1].text,
+        "sources_b": _format_search_record(record),
+    }
 
 
-def run_fact_checker(state: DebateState) -> dict:
-    """
-    Runs after each buy_advocate turn. Picks the most specific verifiable
-    claim from each side's round argument, searches the web to check it,
-    and appends a plain-English finding to fact_check_notes in the state.
-    The moderator receives all notes so its final recommendation is grounded
-    in what was actually verified, not just what was asserted.
-    """
-    user_content = (
-        f"Round {state['round']} arguments:\n\n"
-        f"BUILD side argued:\n{state['position_a']}\n\n"
-        f"BUY side argued:\n{state['position_b']}\n\n"
-        "Fact-check the most specific verifiable claim from each side."
+def moderator_user_content(state: DebateState) -> str:
+    return (
+        f"Case:\n{state['case']}\n\n"
+        f"BUILD side's final argument:\n{state['position_a']}\n\n"
+        f"BUILD search record (written by the program):\n{state['sources_a']}\n\n"
+        f"BUY side's final argument:\n{state['position_b']}\n\n"
+        f"BUY search record (written by the program):\n{state['sources_b']}"
     )
-    result = fact_checker.invoke(
-        {"messages": [{"role": "user", "content": user_content}]}
-    )
-    _describe_tool_usage("fact_checker", result["messages"])
-    note = f"[Round {state['round']} fact-check] {result['messages'][-1].text}"
-    print(f"\n--- Fact-check note (Round {state['round']}) ---\n{note}\n")
-    return {"fact_check_notes": state["fact_check_notes"] + [note]}
 
 
 def moderator(state: DebateState) -> dict:
-    # Include fact-check notes so the moderator's recommendation is grounded
-    # in what was independently verified, not just what was asserted.
-    notes_text = (
-        "\n\nFact-check findings from each round:\n" +
-        "\n".join(state["fact_check_notes"])
-        if state["fact_check_notes"] else ""
-    )
     response = model.invoke([
         {"role": "system", "content": (
             "You are a neutral moderator. Read both sides' final "
-            "arguments and the fact-check findings, then recommend BUILD or BUY. "
-            "Name the single most important trade-off explicitly, and state "
-            "the recommendation in the first sentence."
+            "arguments and recommend BUILD or BUY. Name the single most "
+            "important trade-off explicitly, and state the recommendation "
+            "in the first sentence. Each side has a search record written "
+            "by the program. A price, vendor, or case-study claim from a "
+            "side whose search record is 'No web search on this turn' is "
+            "unverified. Do not treat that claim as a fact."
         )},
-        {"role": "user", "content": (
-            f"Case:\n{state['case']}\n\n"
-            f"BUILD side's final argument:\n{state['position_a']}\n\n"
-            f"BUY side's final argument:\n{state['position_b']}"
-            f"{notes_text}"
-        )},
+        {"role": "user", "content": moderator_user_content(state)},
     ])
     return {"resolution": response.text}
 
@@ -211,13 +232,11 @@ def continue_debate(state: DebateState) -> str:
 graph = StateGraph(DebateState)
 graph.add_node("agent_position_a", agent_position_a)
 graph.add_node("agent_position_b", agent_position_b)
-graph.add_node("fact_checker", run_fact_checker)  # new node between rounds
 graph.add_node("moderator", moderator)
 graph.add_edge(START, "agent_position_a")
 graph.add_edge("agent_position_a", "agent_position_b")
-graph.add_edge("agent_position_b", "fact_checker")  # always fact-check after each round
 graph.add_conditional_edges(
-    "fact_checker", continue_debate, ["agent_position_a", "moderator"]  # loop or finish
+    "agent_position_b", continue_debate, ["agent_position_a", "moderator"]
 )
 graph.add_edge("moderator", END)
 debate_graph = graph.compile()
@@ -229,18 +248,20 @@ if __name__ == "__main__":
         "case": CASE,
         "position_a": "",
         "position_b": "",
+        "sources_a": "",
+        "sources_b": "",
         "round": 0,
         "max_rounds": 2,
         "resolution": "",
-        "fact_check_notes": [],  # starts empty; fact_checker appends one per round
     })
 
     print("\n--- Final BUILD argument ---")
     print(result["position_a"])
+    print("\n--- BUILD search record ---")
+    print(result["sources_a"])
     print("\n--- Final BUY argument ---")
     print(result["position_b"])
-    print("\n--- Fact-check notes (all rounds) ---")
-    for note in result["fact_check_notes"]:
-        print(note)
+    print("\n--- BUY search record ---")
+    print(result["sources_b"])
     print("\n--- Moderator's resolution ---")
     print(result["resolution"])

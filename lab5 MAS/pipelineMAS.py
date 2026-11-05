@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-model = init_chat_model("ollama:qwen2.5:7b") #openai:gpt-5-mini ollama:qwen2.5:1.5b
+model = init_chat_model("ollama:mistral") #openai:gpt-5-mini ollama:qwen2.5:1.5b
 
 
 class ApplicationState(TypedDict):

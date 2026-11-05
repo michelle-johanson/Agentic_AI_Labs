@@ -1,83 +1,55 @@
-# Lab 5 improvements
-
-Compared this folder with the instructor copy at
-`/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Labs/lab5 - MAS`.
-`debateMAS.md`, `pipelineMAS.md`, and `supervisorMAS.md` are identical.
-The three Python files differ. These scripts were not run for this writeup,
-so there are no before/after output numbers.
-
-# Improvement: fact-checker between rounds
+# Improvement 1: Keep each side's search record
 
 ## 1. What we extended
 
-In `debateMAS.py`:
+`DebateState` gained `sources_a` and `sources_b`. Those strings are the search record for the speech currently stored in `position_a` and `position_b`.
 
-- New `fact_checker` agent from `create_agent`, with `tools=[web_search]`.
-  Its system prompt tells it to pick the single most specific verifiable
-  claim from each side, check both with `web_search`, and return a 2-3
-  sentence summary (supported, contradicted, or unverifiable).
-- `DebateState` gained `fact_check_notes: list[str]`. The initial state in
-  `debate_graph.invoke(...)` starts it as `[]`.
-- New node `run_fact_checker`. It builds a prompt from the current
-  `position_a` and `position_b`, calls `fact_checker`, and returns
-  `state["fact_check_notes"] + [note]`.
-- The graph used to go `agent_position_b` straight into `continue_debate`.
-  It now goes `agent_position_b` → `fact_checker` → `continue_debate`
-  (back to `agent_position_a`, or on to `moderator`).
-- `moderator` now joins `fact_check_notes` into the user message, and its
-  system prompt tells it to read those findings before recommending
-  BUILD or BUY.
-- The `__main__` print block prints every note under
-  "Fact-check notes (all rounds)".
+- `_collect_search_record()` walks one advocate's messages and returns `tool_calls`, `queries`, and `urls`. URL parsing is still `_extract_urls()`.
+- `_format_search_record()` turns that dict into the text the other side and the moderator read. When `tool_calls` is 0, the text is the fixed line `No web search on this turn.`, written in code.
+- `_describe_tool_usage()` still prints the calls and URLs, and now returns the record from `_collect_search_record()`. A tool body that does not parse still prints a 200-character preview, and that preview is not stored.
+- `agent_position_a()` and `agent_position_b()` save `_format_search_record(...)` on the state. From the second speech on, the user message is built by `_opponent_block()`, which pastes the opponent's argument and that search record.
+- `moderator_user_content()` adds both search records next to the final arguments. `moderator()` tells the model that a price, vendor, or case-study claim from a side whose record is `No web search on this turn` is unverified.
+
+The advocates' system prompts are unchanged.
 
 ## 2. Why this and not the alternatives
 
-The moderator is a plain `model.invoke()` with no tools, so it cannot
-search on its own. A check has to be a separate agent, and the result
-has to live on `DebateState` or the moderator never sees it.
+`_describe_tool_usage()` already proved whether a search happened, then threw the result away. `moderator()` only received the case and the two final paragraphs. A paragraph can name prices with no search behind it, and the judge had no way to tell.
 
-The diff does not record which alternatives were rejected. Two choices
-are visible in the code:
+Rejected:
 
-- Notes are stored for the moderator only. `agent_position_a` and
-  `agent_position_b` still prompt from the other side's latest argument
-  and never read `fact_check_notes`.
-- The check runs after every round, not once at the end. `continue_debate`
-  sits after `fact_checker`. With `max_rounds = 2` that is two checks.
+- **A stronger sentence in the advocate system prompt** ("you must search"). The supervisor lab already replaced that kind of instruction with a check in code. This file's zero-search line is written by `_format_search_record()`, so it shows up even when the model does not admit that it skipped the tool.
+- **A full transcript of every round.** The moderator would still be unable to tell a real citation from an invented one. Round 1 is still overwritten; that is a separate change.
+- **Checking that every dollar amount in the argument appears in a snippet.** Stronger, and it needs this record stored first. Not built.
+- **A larger model or a second search tool.** The missing piece was the Tavily result this graph already fetched.
 
 ## 3. Benefits
 
-Not measured. No eval was run, and the scripts were not executed for this
-comparison.
+No live debate has been run. The numbers below use one hand-built message list shaped like an advocate invoke: two `web_search` calls, one Tavily-style JSON string (two usable URLs, plus a result with no `url` and a result with an empty `url`), one already-parsed dict with one URL, and one tool message that is not JSON. The other side is a single AI message with no tool call, citing `$400K`. The "before" column is the previous `moderator` user message, rebuilt from the three fields it interpolated (`case`, `position_a`, `position_b`), on that same text.
 
-The behavior change is that the moderator receives one fact-check note
-per round plus the final `position_a` and `position_b`. On a 2-round run
-that is two notes. The advocates still only see the other side's latest
-argument.
+| What reached the moderator | Before | After |
+|---|---:|---:|
+| URL lines | 0 | 3 |
+| Copies of `No web search on this turn.` | 0 | 1 |
+| Characters in the user message | 183 | 563 |
+
+The rebuttal prompt for the searched side also went from 0 URL lines to 3. The three URLs are the two from the JSON string and the one from the parsed dict. The empty and missing `url` fields were dropped, and the non-JSON tool message did not crash parsing. `tool_calls` on that side is 2.
+
+This shows the judge can see the sources. It does not show that the recommendation gets better. `qwen2.5:7b` varies from run to run, so that takes the same `CASE` three times before this change and three times after.
 
 ## 4. Drawbacks and tradeoffs
 
-- Round 2 cannot answer a correction. The advocates never read
-  `fact_check_notes`, so a claim marked contradicted in round 1 can be
-  repeated in round 2.
-- Each round adds one fact-checker call, and that agent may call Tavily.
-  At `max_rounds = 2` that is two extra agent turns on top of the four
-  advocate turns.
-- The prompt asks for only the single most specific claim per side, so
-  the other claims in that round are unchecked.
-- `fact_check_notes` is a plain list with no LangGraph reducer.
-  `run_fact_checker` returns the full list. A later node that returned
-  a partial list would replace the notes instead of appending.
-- The moderator still sees only the last argument on each side, same as
-  the instructor graph. Earlier rounds survive only inside the notes.
+- **Only the latest turn is kept.** `sources_a` and `sources_b` are replaced the same way `position_a` and `position_b` are. With `max_rounds` at 2, each side's opening search record is gone before `moderator()` runs.
+- **A search does not make the paragraph true.** The moderator is told to distrust claims only when the record is the zero-search line. A side can search, receive these URLs, and still invent a price. Nothing compares the argument text to the snippets.
+- **The unverified rule is still a prompt.** The code forces the record into the moderator's user message. It does not read `resolution` to check that the model obeyed.
+- **An unparsed tool body stays on the console.** The 200-character preview from `_describe_tool_usage()` is not copied into `sources_a` or `sources_b`. If every result fails to parse, the stored line is `No URLs could be parsed from the tool results.`
+- **The prompt gets longer.** On this fixture the moderator user message grew from 183 to 563 characters, almost all of it two queries and three URLs. A real turn can attach up to 5 Tavily results per call, and one turn can call the tool more than once. The wording of `NO_SEARCH_NOTE` and the moderator sentence was chosen by eye.
+- **Earlier debate evals:** there were none. Pipeline and supervisor code were not changed.
 
-# Other diffs (not scored as improvements)
+## Backlog (not implemented)
 
-These are setup changes, not extensions of the lab pattern. They were not
-measured.
-
-- `pipelineMAS.py`: `init_chat_model` changed from `ollama:mistral` to
-  `ollama:qwen2.5:7b`. The `draw_mermaid_png` line stays commented.
-- `supervisorMAS.py`: `supervisor_graph.get_graph().draw_mermaid_png(...)`
-  was uncommented. `supervisor_workflow.png` is not in this folder; it is
-  written when the script runs. The model line is still `ollama:qwen2.5:7b`.
+- Keep every round's argument and search record, not only the last turn.
+- Check cited URLs and dollar amounts against the tool snippets, and drop claims that do not appear there.
+- Check in code that the moderator's first sentence says BUILD or BUY.
+- Run the same `CASE` three times before and three times after, and tally zero-search turns, first-sentence format, and prices repeated from a side that did not search.
+- `draw_mermaid_png` still runs when the file loads. The other two labs have that line commented out.

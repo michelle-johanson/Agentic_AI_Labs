@@ -239,7 +239,7 @@ graph.add_node("hardware_worker", hardware_worker)
 graph.add_node("software_worker", software_worker)
 graph.add_edge(START, "supervisor")
 supervisor_graph = graph.compile()
-supervisor_graph.get_graph().draw_mermaid_png(output_file_path="supervisor_workflow.png")
+#supervisor_graph.get_graph().draw_mermaid_png(output_file_path="supervisor_workflow.png")
 
 
 SAMPLE_TICKETS = [
