@@ -1,55 +1,93 @@
-# Improvement 1: Keep each side's search record
+# Lab 5 improvement
 
-## 1. What we extended
+## One change we extended
 
-`DebateState` gained `sources_a` and `sources_b`. Those strings are the search record for the speech currently stored in `position_a` and `position_b`.
+We added a **shared fact-checked debate history** to `debateMAS.py`. After each round, a fact-checker reads the accumulated arguments and earlier findings, investigates selected claims, and appends its report to the same history. Both advocates receive those findings before their next turn, and the moderator receives the full record before recommending BUILD or BUY.
 
-- `_collect_search_record()` walks one advocate's messages and returns `tool_calls`, `queries`, and `urls`. URL parsing is still `_extract_urls()`.
-- `_format_search_record()` turns that dict into the text the other side and the moderator read. When `tool_calls` is 0, the text is the fixed line `No web search on this turn.`, written in code.
-- `_describe_tool_usage()` still prints the calls and URLs, and now returns the record from `_collect_search_record()`. A tool body that does not parse still prints a 200-character preview, and that preview is not stored.
-- `agent_position_a()` and `agent_position_b()` save `_format_search_record(...)` on the state. From the second speech on, the user message is built by `_opponent_block()`, which pastes the opponent's argument and that search record.
-- `moderator_user_content()` adds both search records next to the final arguments. `moderator()` tells the model that a price, vendor, or case-study claim from a side whose record is `No web search on this turn` is unverified.
+This combines the full-transcript and fact-checker versions into one feedback process: preserve the debate, check claims in context, and make the findings available to every participant.
 
-The advocates' system prompts are unchanged.
+## 1. What we changed in the code
 
-## 2. Why this and not the alternatives
+### Shared state
 
-`_describe_tool_usage()` already proved whether a search happened, then threw the result away. `moderator()` only received the case and the two final paragraphs. A paragraph can name prices with no search behind it, and the judge had no way to tell.
+- `DebateState.history: list[str]` stores chronological entries labeled `Round N - BUILD`, `Round N - BUY`, and `Round N - FACT CHECK`.
+- `format_history(state)` joins those entries for participant prompts.
+- `agent_position_a()` and `agent_position_b()` read the entire history and append their new arguments. Their system prompts tell them to correct or qualify claims challenged by evidence.
+- `position_a` and `position_b` still hold the latest arguments for the existing final-output print statements.
+- Initial state includes `history: []`. There is no separate `fact_check_notes` list; reports live with the arguments they concern.
 
-Rejected:
+### Checking and saving findings
 
-- **A stronger sentence in the advocate system prompt** ("you must search"). The supervisor lab already replaced that kind of instruction with a check in code. This file's zero-search line is written by `_format_search_record()`, so it shows up even when the model does not admit that it skipped the tool.
-- **A full transcript of every round.** The moderator would still be unable to tell a real citation from an invented one. Round 1 is still overwritten; that is a separate change.
-- **Checking that every dollar amount in the argument appears in a snippet.** Stronger, and it needs this record stored first. Not built.
-- **A larger model or a second search tool.** The missing piece was the Tavily result this graph already fetched.
+- A new `fact_checker` agent has the existing `web_search` tool.
+- Its prompt prioritizes one specific, decision-relevant claim per side from the latest round. It uses earlier history to identify unresolved or repeated claims and is instructed to avoid redundant checks unless a claim is contested or new evidence appears.
+- The checker is instructed to identify each selected claim, label it supported, contradicted, or unverifiable, and explain the finding with a returned source URL. These instructions are prompt-based; the code does not enforce a claim count or verdict format.
+- `run_fact_checker()` passes the case assumptions and complete history to the checker, then appends its report to `history`.
+- `_fact_check_search_record()` adds a program-written record of the checker's tool-call count, queries, and parsed, deduplicated source URLs to that report.
+- If the checker makes no tool call, the program appends: `Search record written by the program: no web search was performed. Treat this report as unverified.` If calls occur but no usable URLs can be parsed, it also marks the report unverified.
 
-## 3. Benefits
+Search records are saved for the **checker reports**. Advocate tool activity is still printed to the console; this version does not keep separate `sources_a` and `sources_b` fields.
 
-No live debate has been run. The numbers below use one hand-built message list shaped like an advocate invoke: two `web_search` calls, one Tavily-style JSON string (two usable URLs, plus a result with no `url` and a result with an empty `url`), one already-parsed dict with one URL, and one tool message that is not JSON. The other side is a single AI message with no tool call, citing `$400K`. The "before" column is the previous `moderator` user message, rebuilt from the three fields it interpolated (`case`, `position_a`, `position_b`), on that same text.
+### Graph and moderator
 
-| What reached the moderator | Before | After |
-|---|---:|---:|
-| URL lines | 0 | 3 |
-| Copies of `No web search on this turn.` | 0 | 1 |
-| Characters in the user message | 183 | 563 |
+After BUILD and BUY speak, the graph always runs `fact_checker` before calling `continue_debate()`. That routing function sends execution back to BUILD if another round remains, or to the moderator after the final check.
 
-The rebuttal prompt for the searched side also went from 0 URL lines to 3. The three URLs are the two from the JSON string and the one from the parsed dict. The empty and missing `url` fields were dropped, and the non-JSON tool message did not crash parsing. `tool_calls` on that side is 2.
+`moderator()` reads the complete history, including reports from every round. Its system prompt tells it to consider those findings, distinguish case assumptions from externally checked claims, acknowledge unresolved findings, and avoid treating repeated claims or returned URLs alone as proof.
 
-This shows the judge can see the sources. It does not show that the recommendation gets better. `qwen2.5:7b` varies from run to run, so that takes the same `CASE` three times before this change and three times after.
+The main print block now prints the complete history, including the fact-check reports. Diagram generation is commented out as an optional visualization.
+
+## 2. Why we chose this change
+
+The documented baseline retained only the latest argument from each side. A full transcript fixes lost context, but does not investigate the claims it preserves. The separate fact-checker version produces findings for the moderator, but does not give those findings to the advocates, so they cannot respond to corrections in later rounds.
+
+The merged version connects checking to the shared memory. A first-round correction can now reach both second-round advocates, remain available to the next check, and reach the final moderator.
+
+Alternatives considered:
+
+- **Keep only the transcript:** preserves earlier arguments without adding a way to check their factual claims.
+- **Keep only the original checker:** adds checking but leaves corrections outside the advocates' prompts.
+- **Add more debate rounds:** increases work without fixing missing memory or correction feedback.
+- **Check every claim in every round:** expands search and prompt costs. The implemented prompt instead prioritizes selected claims, although actual model compliance still requires live evaluation.
+
+## 3. Benefits and supporting evidence
+
+Seven local checks passed against the merged code. The harness executed its actual functions and graph declarations with synthetic messages, stub agents, and a simulated graph runner. It did not initialize or run the real LangGraph runtime, Ollama, Tavily, or LangSmith.
+
+| Check | Observed result |
+| --- | --- |
+| T1 — retention and order | Two rounds preserved four arguments and two checker reports in chronological order. The original input history was not mutated. |
+| T2 — checker context | The second checker received both rounds' arguments and the complete first checker report. |
+| T3 — feedback to advocates | Both second-round advocates received the first correction and its recorded source URL. |
+| T4 — moderator context | The moderator received all six history entries and both checker source records. |
+| T5 — skipped search | A checker response without tool calls received the program-written unverified warning. |
+| T6 — malformed results | Malformed JSON and unusable URL fields did not crash source-record creation; missing usable URLs were flagged. |
+| T7 — routing | Simulation of the declared graph ran BUILD, BUY, and the checker twice, then the moderator. |
+
+The synthetic scenario used a predetermined false claim that a fictional vendor lacked exports, a predetermined checker correction, and a predetermined later withdrawal. This demonstrated that the correction reached later prompts; it did **not** demonstrate that a live model independently found or corrected an error. The example.com URLs were fixture data, not retrieved evidence.
+
+For two rounds, the updated moderator receives four arguments and two reports instead of the documented baseline's final two arguments. Seven top-level advocate/checker/moderator invocations occur instead of five. Tool-using agents may perform additional internal model calls and searches.
+
+No live recommendation-quality, factual-accuracy, latency, or cost improvement has been measured. The previous search-record version's five tests and 152-to-483-character prompt comparison concern a different implementation and are not evidence for this merged version.
 
 ## 4. Drawbacks and tradeoffs
 
-- **Only the latest turn is kept.** `sources_a` and `sources_b` are replaced the same way `position_a` and `position_b` are. With `max_rounds` at 2, each side's opening search record is gone before `moderator()` runs.
-- **A search does not make the paragraph true.** The moderator is told to distrust claims only when the record is the zero-search line. A side can search, receive these URLs, and still invent a price. Nothing compares the argument text to the snippets.
-- **The unverified rule is still a prompt.** The code forces the record into the moderator's user message. It does not read `resolution` to check that the model obeyed.
-- **An unparsed tool body stays on the console.** The 200-character preview from `_describe_tool_usage()` is not copied into `sources_a` or `sources_b`. If every result fails to parse, the stored line is `No URLs could be parsed from the tool results.`
-- **The prompt gets longer.** On this fixture the moderator user message grew from 183 to 563 characters, almost all of it two queries and three URLs. A real turn can attach up to 5 Tavily results per call, and one turn can call the tool more than once. The wording of `NO_SEARCH_NOTE` and the moderator sentence was chosen by eye.
-- **Earlier debate evals:** there were none. Pipeline and supervisor code were not changed.
+- **Extra work:** one checker-agent invocation is added per round, with potential search calls and additional inference latency.
+- **Growing prompts:** every participant repeatedly receives the accumulated history. Larger round limits increase input size and may eventually exceed the model's context window.
+- **Checker errors can spread:** a mistaken verdict or misread source is preserved and can influence later arguments and the moderator.
+- **Selected coverage:** the checker is instructed to prioritize selected claims, not verify every assertion in the history.
+- **Prompt-based behavior:** the code passes findings to participants, but does not force them to accept corrections, search, use the requested verdict format, or avoid redundant checks.
+- **Source records are not proof:** a tool call and returned URL do not establish that a claim is supported. The saved record contains queries and URLs, not complete source snippets or a programmatic claim-to-source comparison.
+- **Sequential state updates:** nodes return the full updated `history` list. Parallel writers would require an appropriate reducer or another merge strategy to avoid conflicting updates.
+- **Memory lasts for one run:** history is retained in graph state and printed at the end. This script does not configure a checkpointer or automatically save a transcript file for use across separate runs.
 
-## Backlog (not implemented)
+## 5. AI use disclosure
 
-- Keep every round's argument and search record, not only the last turn.
-- Check cited URLs and dollar amounts against the tool snippets, and drop claims that do not appear there.
-- Check in code that the moderator's first sentence says BUILD or BUY.
-- Run the same `CASE` three times before and three times after, and tally zero-search turns, first-sentence format, and prices repeated from a side that did not search.
-- `draw_mermaid_png` still runs when the file loads. The other two labs have that line commented out.
+ChatGPT merged the full-history and fact-checker implementations at the user's request, updated participant prompts and graph routing, added checker source records, and drafted this explanation and the matching memo. It also created and ran the seven local checks described above. The checks support claims about state retention, routing, and delivery of findings, not live factual accuracy or improved decision quality.
+
+## Live evaluation still needed
+
+1. Run the same `CASE` three times on the baseline and three times on the merged version.
+2. Inspect whether the checker actually searches, whether its verdicts match the retrieved evidence, and whether corrected errors recur in later arguments or the final recommendation.
+3. Compare total run time and record actual model/search usage where available.
+4. Add public LangSmith run links and project-log screenshots to the memo, including a first-round checker report, both second-round advocate inputs, and the moderator's full-history input.
+
+The existing `ollama:qwen2.5:7b` model, Tavily configuration, case assumptions, and two-round limit remain in the merged script. No pipeline or supervisor changes are part of this extension.

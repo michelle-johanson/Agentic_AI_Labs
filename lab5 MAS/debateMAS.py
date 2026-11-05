@@ -1,5 +1,5 @@
 """
-Lab: Debate Pattern -- Build vs. Buy (with live web search) -- SOLUTION
+Lab: Debate Pattern -- Build vs. Buy with shared fact-checked history
 IS 590R -- AI and Agentic Systems
 """
 
@@ -32,7 +32,9 @@ build_advocate = create_agent(
         "Use the web_search tool when it would strengthen your case with "
         "current pricing, vendor comparisons, or case studies -- don't "
         "just guess at numbers. Make the strongest honest case you can in "
-        "3-4 sentences, citing what you found."
+        "3-4 sentences, citing what you found. Read the shared history, including "
+        "fact-check findings. Correct or qualify claims challenged by evidence; "
+        "do not repeat a contradicted claim without new supporting evidence."
     ),
 )
 
@@ -45,7 +47,34 @@ buy_advocate = create_agent(
         "strengthen your case with current SaaS CRM pricing or feature "
         "comparisons -- don't just guess at numbers. Make the strongest "
         "honest case you can in 3-4 sentences, directly rebutting the "
-        "BUILD side's latest argument, citing what you found."
+        "BUILD side's latest argument, citing what you found. Read the shared "
+        "history, including fact-check findings. Correct or qualify claims "
+        "challenged by evidence; do not repeat a contradicted claim without "
+        "new supporting evidence."
+    ),
+)
+
+
+# One extension: a shared history of arguments and fact-check findings.
+# The checker reads that history after every completed BUILD/BUY round.
+fact_checker = create_agent(
+    model,
+    tools=[web_search],
+    system_prompt=(
+        "You are a neutral fact-checker reviewing a cumulative debate history. "
+        "Treat CASE numbers as supplied assumptions, not external facts to verify. "
+        "Prioritize one specific, decision-relevant factual claim from each side "
+        "in the latest round. Use earlier arguments and fact-check findings to "
+        "identify unresolved or repeated claims; do not needlessly recheck a "
+        "settled claim unless it is contested or new evidence appears. "
+        "Use web_search to investigate selected claims. For each, identify the "
+        "side, quote the claim, and label it supported, contradicted, or "
+        "unverifiable, with a short reason and a source URL returned by the tool. "
+        "If a side has no new checkable claim, say so. If search is skipped or "
+        "the results do not support a conclusion, say unverifiable. "
+        "Do not invent sources or treat earlier checker notes as proof. "
+        "If revising an earlier finding, explicitly identify the revision. "
+        "Keep the complete report to 4-6 sentences."
     ),
 )
 
@@ -70,60 +99,18 @@ def _extract_urls(raw_content) -> list[str]:
     return [r.get("url") for r in results if isinstance(r, dict) and r.get("url")]
 
 
-NO_SEARCH_NOTE = "No web search on this turn."
-
-
-def _collect_search_record(messages) -> dict:
+def _describe_tool_usage(label: str, messages) -> None:
     """
-    Pull the search facts out of one advocate invoke: how many tool calls
-    fired, the arguments sent, and every URL that parsed out of a tool
-    result. The argument text is not a reliable record of this -- a
-    paragraph can cite prices with no search behind it.
+    Prints every tool call's name + arguments (the actual search query
+    sent) and, when parseable, every URL the tool returned. This is the
+    only reliable way to confirm a tool fired -- the agent's final
+    argument text alone can look authoritative with zero search behind
+    it.
     """
-    tool_calls = 0
-    queries: list[str] = []
-    urls: list[str] = []
+    saw_any_call = False
     for message in messages:
         for call in getattr(message, "tool_calls", None) or []:
-            tool_calls += 1
-            queries.append(f"{call.get('name')} {call.get('args')}")
-        if getattr(message, "type", None) == "tool":
-            urls.extend(_extract_urls(message.content))
-    return {"tool_calls": tool_calls, "queries": queries, "urls": urls}
-
-
-def _format_search_record(record: dict) -> str:
-    """
-    Text the other advocate and the moderator actually read. The zero-search
-    line is written here, in code, so it does not depend on the model
-    admitting that it skipped the tool.
-    """
-    if record["tool_calls"] == 0:
-        return NO_SEARCH_NOTE
-
-    lines = [f"Web searches this turn: {record['tool_calls']}"]
-    if record["queries"]:
-        lines.append("Queries:")
-        lines.extend(f"- {query}" for query in record["queries"])
-    if record["urls"]:
-        lines.append("URLs returned:")
-        lines.extend(f"- {url}" for url in record["urls"])
-    else:
-        lines.append("No URLs could be parsed from the tool results.")
-    return "\n".join(lines)
-
-
-def _describe_tool_usage(label: str, messages) -> dict:
-    """
-    Print every tool call's name + arguments (the actual search query
-    sent) and, when parseable, every URL the tool returned. Returns the
-    count, queries, and parsed URLs so the debate state can keep them.
-    A tool result that does not parse still prints a 200-character
-    preview here; that preview is not copied into the state.
-    """
-    record = _collect_search_record(messages)
-    for message in messages:
-        for call in getattr(message, "tool_calls", None) or []:
+            saw_any_call = True
             print(f"[{label}] called {call.get('name')} with args: {call.get('args')}")
 
         if getattr(message, "type", None) == "tool":
@@ -136,89 +123,153 @@ def _describe_tool_usage(label: str, messages) -> dict:
                 preview = str(message.content)[:200]
                 print(f"[{label}] tool returned (no URLs parsed out; raw preview): {preview}")
 
-    if record["tool_calls"] == 0:
+    if not saw_any_call:
         print(f"[{label}] made NO tool calls -- this argument is from the model's own knowledge only.")
-    return record
 
 
-def _opponent_block(side: str, argument: str, sources: str) -> str:
-    return (
-        f"The {side} side just argued:\n{argument}\n\n"
-        "Search record for that argument (written by the program, not by the advocate):\n"
-        f"{sources}\n\n"
-        "Rebut their argument and strengthen your case."
-    )
+def _fact_check_search_record(messages) -> str:
+    """Save actual checker tool activity alongside the model's findings.
+
+    Only web_search is registered on this agent. This record documents
+    tool use and returned URLs; it does not prove a claim is supported.
+    """
+    calls = []
+    urls = []
+    for message in messages:
+        calls.extend(getattr(message, "tool_calls", None) or [])
+        if getattr(message, "type", None) == "tool":
+            urls.extend(url for url in _extract_urls(message.content) if isinstance(url, str))
+
+    if not calls:
+        return (
+            "Search record written by the program: no web search was performed. "
+            "Treat this report as unverified."
+        )
+    lines = [f"Search record written by the program: {len(calls)} tool call(s)."]
+    for call in calls:
+        lines.append(f"Query: {call.get('name')} {call.get('args')}")
+    if urls:
+        lines.append("URLs returned by the tool:")
+        lines.extend(f"- {url}" for url in dict.fromkeys(urls))
+    else:
+        lines.append("No source URLs could be parsed; treat this report as unverified.")
+    return "\n".join(lines)
 
 
 class DebateState(TypedDict):
     case: str
     position_a: str
     position_b: str
-    sources_a: str
-    sources_b: str
+    history: list[str]  # Chronological BUILD, BUY, and FACT CHECK entries.
     round: int
     max_rounds: int
     resolution: str
 
 
+# All participants read this same history, including saved checker reports.
+def format_history(state: DebateState) -> str:
+    return "\n\n".join(state["history"]) or "No arguments yet."
+
+
 def agent_position_a(state: DebateState) -> dict:
-    if state["round"] == 0:
-        user_content = f"Case:\n{state['case']}\n\nMake your opening argument."
-    else:
-        user_content = (
-            f"Case:\n{state['case']}\n\n"
-            + _opponent_block("BUY", state["position_b"], state["sources_b"])
-        )
+    # Extension: give BUILD all prior arguments, with a separate opening instruction.
+    instruction = (
+        "Make your opening argument."
+        if state["round"] == 0
+        else "Respond to the BUY side's latest argument, consider earlier "
+             "points, and strengthen your case without unnecessary repetition."
+    )
+    user_content = (
+        f"Case:\n{state['case']}\n\n"
+        f"Debate so far:\n{format_history(state)}\n\n"
+        f"{instruction}"
+    )
 
     result = build_advocate.invoke(
         {"messages": [{"role": "user", "content": user_content}]}
     )
-    record = _describe_tool_usage("build_advocate", result["messages"])
+    _describe_tool_usage("build_advocate", result["messages"])
+    # Extension: preserve BUILD's argument while keeping the latest-position output.
+    argument = result["messages"][-1].text
+    current_round = state["round"] + 1
     return {
-        "position_a": result["messages"][-1].text,
-        "sources_a": _format_search_record(record),
-        "round": state["round"] + 1,
+        "position_a": argument,
+        "round": current_round,
+        "history": state["history"] + [
+            f"Round {current_round} - BUILD:\n{argument}"
+        ],
     }
 
 
 def agent_position_b(state: DebateState) -> dict:
+    # Extension: give BUY the full transcript, including BUILD's newest argument.
     user_content = (
         f"Case:\n{state['case']}\n\n"
-        + _opponent_block("BUILD", state["position_a"], state["sources_a"])
+        f"Debate so far:\n{format_history(state)}\n\n"
+        "Respond to the BUILD side's latest argument, consider earlier "
+        "points, and strengthen your case without unnecessary repetition."
     )
 
     result = buy_advocate.invoke(
         {"messages": [{"role": "user", "content": user_content}]}
     )
-    record = _describe_tool_usage("buy_advocate", result["messages"])
+    _describe_tool_usage("buy_advocate", result["messages"])
+    # Extension: append BUY's argument using the round already incremented by BUILD.
+    argument = result["messages"][-1].text
     return {
-        "position_b": result["messages"][-1].text,
-        "sources_b": _format_search_record(record),
+        "position_b": argument,
+        "history": state["history"] + [
+            f"Round {state['round']} - BUY:\n{argument}"
+        ],
     }
 
 
-def moderator_user_content(state: DebateState) -> str:
-    return (
-        f"Case:\n{state['case']}\n\n"
-        f"BUILD side's final argument:\n{state['position_a']}\n\n"
-        f"BUILD search record (written by the program):\n{state['sources_a']}\n\n"
-        f"BUY side's final argument:\n{state['position_b']}\n\n"
-        f"BUY search record (written by the program):\n{state['sources_b']}"
+def run_fact_checker(state: DebateState) -> dict:
+    """Review the full history and append one sourced report for this round.
+
+    Nodes execute sequentially, so each returns the entire updated list.
+    The next advocates and the moderator see this report through history.
+    """
+    result = fact_checker.invoke({"messages": [{
+        "role": "user",
+        "content": (
+            f"Case assumptions:\n{state['case']}\n\n"
+            f"Complete debate history:\n{format_history(state)}\n\n"
+            f"Review round {state['round']}. Check the latest claims against "
+            "external sources, taking earlier arguments and findings into account."
+        ),
+    }]})
+    messages = result["messages"]
+    _describe_tool_usage("fact_checker", messages)
+    report = (
+        f"Round {state['round']} - FACT CHECK:\n{messages[-1].text}\n\n"
+        f"{_fact_check_search_record(messages)}"
     )
+    print(f"\n--- Saved fact-check report ---\n{report}\n")
+    return {"history": state["history"] + [report]}
 
 
 def moderator(state: DebateState) -> dict:
     response = model.invoke([
+        # Extension: judge evidence and unanswered rebuttals across every round.
         {"role": "system", "content": (
-            "You are a neutral moderator. Read both sides' final "
-            "arguments and recommend BUILD or BUY. Name the single most "
-            "important trade-off explicitly, and state the recommendation "
-            "in the first sentence. Each side has a search record written "
-            "by the program. A price, vendor, or case-study claim from a "
-            "side whose search record is 'No web search on this turn' is "
-            "unverified. Do not treat that claim as a fact."
+            "You are a neutral moderator. Review the complete debate "
+            "history and recommend BUILD or BUY. Consider evidence and "
+            "rebuttals from every round, including points left unanswered. "
+            "Consider the saved fact-check findings and their program-recorded "
+            "search activity. A report flagged unverified is not verification. "
+            "A returned URL alone does not establish support for a claim. "
+            "Distinguish CASE assumptions from externally checked claims, "
+            "and acknowledge unresolved or conflicting findings. "
+            "Do not treat repeated claims as additional evidence. "
+            "Name the single most important trade-off explicitly, and "
+            "state the recommendation in the first sentence."
         )},
-        {"role": "user", "content": moderator_user_content(state)},
+        # Extension: supply the complete transcript instead of only final arguments.
+        {"role": "user", "content": (
+            f"Case:\n{state['case']}\n\n"
+            f"Complete debate history:\n{format_history(state)}"
+        )},
     ])
     return {"resolution": response.text}
 
@@ -232,15 +283,18 @@ def continue_debate(state: DebateState) -> str:
 graph = StateGraph(DebateState)
 graph.add_node("agent_position_a", agent_position_a)
 graph.add_node("agent_position_b", agent_position_b)
+graph.add_node("fact_checker", run_fact_checker)
 graph.add_node("moderator", moderator)
 graph.add_edge(START, "agent_position_a")
 graph.add_edge("agent_position_a", "agent_position_b")
+graph.add_edge("agent_position_b", "fact_checker")
 graph.add_conditional_edges(
-    "agent_position_b", continue_debate, ["agent_position_a", "moderator"]
+    "fact_checker", continue_debate, ["agent_position_a", "moderator"]
 )
 graph.add_edge("moderator", END)
 debate_graph = graph.compile()
-debate_graph.get_graph().draw_mermaid_png(output_file_path="debate_workflow.png")
+# Optional visualization (may require network access):
+# debate_graph.get_graph().draw_mermaid_png(output_file_path="debate_workflow.png")
 
 
 if __name__ == "__main__":
@@ -248,8 +302,7 @@ if __name__ == "__main__":
         "case": CASE,
         "position_a": "",
         "position_b": "",
-        "sources_a": "",
-        "sources_b": "",
+        "history": [],  # Extension: start with an empty debate transcript.
         "round": 0,
         "max_rounds": 2,
         "resolution": "",
@@ -257,11 +310,9 @@ if __name__ == "__main__":
 
     print("\n--- Final BUILD argument ---")
     print(result["position_a"])
-    print("\n--- BUILD search record ---")
-    print(result["sources_a"])
     print("\n--- Final BUY argument ---")
     print(result["position_b"])
-    print("\n--- BUY search record ---")
-    print(result["sources_b"])
+    print("\n--- Complete debate history including fact checks ---")
+    print(format_history(result))
     print("\n--- Moderator's resolution ---")
     print(result["resolution"])
