@@ -1,0 +1,138 @@
+{
+  "project": "lab3-camden-evidence",
+  "links": [
+    {
+      "case": "controlled summary",
+      "file": null,
+      "variant": null,
+      "run_id": "01a136a1-6075-76c2-8fa7-89f9a8f90bdd",
+      "public_url": "https://smith.langchain.com/public/8c70dfd3-3533-448d-8dbd-59e389fa8aff/r"
+    },
+    {
+      "case": "verbatim",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-5e96-7230-bde2-d9a2b3ae91cb",
+      "public_url": "https://smith.langchain.com/public/14f77bea-37a3-4385-be54-759bcb399640/r"
+    },
+    {
+      "case": "whitespace_only",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606a-75d0-a17b-8da1139dd6b0",
+      "public_url": "https://smith.langchain.com/public/78daf8e4-d995-4e4c-961c-05d19932b604/r"
+    },
+    {
+      "case": "invented_quote",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606b-7721-ba69-d2eca84c56d7",
+      "public_url": "https://smith.langchain.com/public/b8ba3965-3c82-472b-8497-27cf350759fd/r"
+    },
+    {
+      "case": "altered_punctuation",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606c-7fb2-bfe0-fb15b6d7e085",
+      "public_url": "https://smith.langchain.com/public/44b5a4cb-261f-481e-bad6-ab398d348a4d/r"
+    },
+    {
+      "case": "altered_case",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606c-7a71-8d2a-d8309b162015",
+      "public_url": "https://smith.langchain.com/public/0da87c19-df93-4acf-954a-c74c5095b5a0/r"
+    },
+    {
+      "case": "stitched_passages",
+      "file": "costco10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606d-7c80-a060-f0ef390b37d7",
+      "public_url": "https://smith.langchain.com/public/f9e9d927-9766-41d2-8998-b5b1cf3f4f7c/r"
+    },
+    {
+      "case": "verbatim",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606e-7990-9f65-27b0d4c97a77",
+      "public_url": "https://smith.langchain.com/public/7c4f9a45-53a4-4b52-86ee-b53b46d1ddec/r"
+    },
+    {
+      "case": "whitespace_only",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606f-7db2-913c-cfd51ac19113",
+      "public_url": "https://smith.langchain.com/public/09825c5f-5451-4d7b-9d36-cb7da9c55159/r"
+    },
+    {
+      "case": "invented_quote",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-606f-73e3-9204-e630596a17f8",
+      "public_url": "https://smith.langchain.com/public/d3d1379d-bf20-415a-b338-134f7904eff9/r"
+    },
+    {
+      "case": "altered_punctuation",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6070-73f0-9041-b9fb9aa114d0",
+      "public_url": "https://smith.langchain.com/public/10078fd0-a3d8-4a18-bb48-645b6f1e8ddd/r"
+    },
+    {
+      "case": "altered_case",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6070-7fc1-80f2-f778b0247ef0",
+      "public_url": "https://smith.langchain.com/public/f7c19fea-74c9-41d8-8f99-df52c5600663/r"
+    },
+    {
+      "case": "stitched_passages",
+      "file": "eliLilly10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6071-7ac3-9e06-b319e482f9ad",
+      "public_url": "https://smith.langchain.com/public/25e33d0d-3087-46ce-bc53-42b3cb373913/r"
+    },
+    {
+      "case": "verbatim",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6071-7953-9494-1985a9763bf7",
+      "public_url": "https://smith.langchain.com/public/85ae2f66-96b8-4372-a4cd-ed921ec2baee/r"
+    },
+    {
+      "case": "whitespace_only",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6072-7f52-9335-2b8c6d7e72f3",
+      "public_url": "https://smith.langchain.com/public/29ec37c4-4aea-4b11-8963-96333e63d6bb/r"
+    },
+    {
+      "case": "invented_quote",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6072-7f50-8871-466f6669a54d",
+      "public_url": "https://smith.langchain.com/public/478671cb-853d-436d-b371-d865cde1b15b/r"
+    },
+    {
+      "case": "altered_punctuation",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6073-7af3-9e35-02d781a376c1",
+      "public_url": "https://smith.langchain.com/public/22abeba7-ee3a-4571-b1d8-b435527726b0/r"
+    },
+    {
+      "case": "altered_case",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6074-7c03-8f98-ba0773b099ae",
+      "public_url": "https://smith.langchain.com/public/b0b8210e-099f-4958-83a8-d0f3b9a3b278/r"
+    },
+    {
+      "case": "stitched_passages",
+      "file": "tesla10K.pdf",
+      "variant": null,
+      "run_id": "01a136a1-6074-77b1-87e1-9152ba40227d",
+      "public_url": "https://smith.langchain.com/public/cb7d11a8-0978-44fb-a3c0-b354d775106f/r"
+    }
+  ]
+}

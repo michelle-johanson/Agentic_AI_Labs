@@ -44,14 +44,64 @@ Results are printed as a before/after table and saved in
 `lab3/files/evidence_eval_results.json`. Model calls are mocked for the retry and script
 3-4 integration checks; no Ollama inference is performed.
 
-Evaluation status: Python syntax compilation passed. Running `evalEvidence.py` with
-the installed system Python stopped at `ModuleNotFoundError: No module named
-'pydantic'`, before any evaluation cases executed. Run the command above in the lab's
-configured environment; the repository's `AGENTS.md` says not to run the venv from
-the shell. No before/after rejection counts or model-accuracy improvements have been
-measured yet. A full extraction comparison on the three filings is still needed to
-measure accuracy, recall, latency, and retry cost. No earlier lab3 evaluation script
-was present to rerun.
+The committed `files/evidence_eval_results.json` contains 18 controlled cases:
+all 12 invalid quote variants were accepted by the old string schema and rejected
+by source checking; all 6 verbatim/whitespace-only variants were accepted by both.
+These are validator results, not measured LLM accuracy. The earlier system-Python
+attempt lacked `pydantic`; the presence of saved results supersedes the earlier
+note that no rejection counts were available.
+
+For a fresh run and LangSmith records, `runEvidenceStudy.py` reruns the complete
+existing evaluation, records the individual cases and aggregate results, and can
+also compare live extraction with the same model and temperature on both sides.
+Script 1's 3B and script 2's 7B results should not be used to isolate the benefit
+of quote validation because their models differ.
+
+```powershell
+python lab3/runEvidenceStudy.py
+python lab3/runEvidenceStudy.py --trace
+python lab3/runEvidenceStudy.py --trace --live --limit 6
+```
+
+Tracing requires a locally configured `LANGSMITH_API_KEY`. Use
+`LANGSMITH_PROJECT=lab3-camden-evidence`. The optional `--share` flag creates
+public links for the recorded filing excerpts and outputs; otherwise links are
+private. Timestamped controlled/live results and trace links are saved under
+`lab3/files`. Live outputs include blank human-review fields for unsupported
+findings, omissions, and category errors. Model calls alternate variant order
+and retain the same 0.3 temperature and three-attempt cap. The sample is small
+and selected by the existing keyword filter, not a broad accuracy estimate.
+
+Preparation status (October 13, 2026): Ollama is running with `qwen2.5:3b`,
+but `qwen2.5:7b` needs to be downloaded for the default live comparison. No fresh
+runtime/accuracy measurements or LangSmith links have been produced in this
+session at preparation time. The user will run the configured environment and longer commands,
+as required by `AGENTS.md`. The measurement runner's syntax and isolated
+validation/retry behavior were checked separately before handing over commands.
+
+Fresh user-run validation (October 13, 2026): the complete original evaluation
+passed, reproducing 12/12 invalid variants accepted before and 0/12 after,
+with all 6 valid quote/whitespace variants accepted. Results are saved in
+`files/controlled_evidence_20261013_125828_ca5efb.json`. LangSmith created
+15 public case links; the summary and three early cases initially returned
+404 during sharing. Credentials worked for later cases, consistent with delayed
+visibility rather than a blanket authentication failure.
+
+The runner now uses the supported v2 sharing resource with explicit project
+and trace coordinates, retries transient availability failures, preserves
+existing public links, and offers `--repair-links` to retry the saved run IDs
+without repeating PDF tests or model calls. Isolated tests covered delayed
+visibility, coordinate arguments, preservation of working links, and immediate
+reporting of permission errors. Live extraction evaluation remains pending.
+
+The user subsequently ran the repair command successfully: all 19 links (18
+individual controlled cases plus one summary) are available, with no remaining
+link errors. The public aggregate evidence is:
+https://smith.langchain.com/public/8c70dfd3-3533-448d-8dbd-59e389fa8aff/r
+The summary records 12 invalid variants accepted before and zero after, and
+6 valid variants accepted both before and after. These remain controlled
+validation results, not measured live-model accuracy. Project and result
+screenshots still need to be added to the final memo by the group.
 
 ## 4. Drawbacks and tradeoffs
 
