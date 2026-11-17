@@ -1,0 +1,115 @@
+{
+  "run_id": "baseline-01",
+  "variant": "baseline",
+  "status": "completed",
+  "error": "",
+  "started_at": "2026-11-05T11:53:30.503375+00:00",
+  "elapsed_seconds": 126.87475,
+  "timeout_seconds": 1500,
+  "model": "qwen2.5:7b",
+  "max_rounds": 2,
+  "source": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/baseline/instructor_debateMAS_runnable.py",
+  "source_sha256": "def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310",
+  "instructor_baseline_sha256": "574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3",
+  "python": "3.14.7",
+  "executable": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/.venv/bin/python",
+  "packages": {
+    "langchain": "1.4.8",
+    "langchain-core": "1.7.6",
+    "langchain-ollama": "1.1.0",
+    "langchain-tavily": "0.2.18",
+    "langgraph": "1.2.19",
+    "langsmith": "0.14.17",
+    "python-dotenv": "1.2.3",
+    "typing_extensions": "4.16.0"
+  },
+  "search_calls": [
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "SaaS CRM pricing comparison, integration costs, long-term maintenance and support",
+        "search_depth": "advanced"
+      }
+    },
+    {
+      "participant": "build_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "in-house CRM development cost comparison",
+        "search_depth": "advanced",
+        "topic": "general"
+      }
+    },
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "SaaS CRM vs in-house development cost comparison",
+        "search_depth": "advanced"
+      }
+    }
+  ],
+  "participant_order": [
+    "build_advocate",
+    "buy_advocate",
+    "build_advocate",
+    "buy_advocate",
+    "moderator"
+  ],
+  "usage_metadata": [
+    {
+      "input_tokens": 1576,
+      "output_tokens": 153,
+      "total_tokens": 1729
+    },
+    {
+      "input_tokens": 1751,
+      "output_tokens": 42,
+      "total_tokens": 1793
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 674,
+      "total_tokens": 2724
+    },
+    {
+      "input_tokens": 2259,
+      "output_tokens": 40,
+      "total_tokens": 2299
+    },
+    {
+      "input_tokens": 3692,
+      "output_tokens": 181,
+      "total_tokens": 3873
+    },
+    {
+      "input_tokens": 1779,
+      "output_tokens": 37,
+      "total_tokens": 1816
+    },
+    {
+      "input_tokens": 3852,
+      "output_tokens": 209,
+      "total_tokens": 4061
+    }
+  ],
+  "tracing": {
+    "project": "is590r-lab5-debate",
+    "endpoint": "https://api.smith.langchain.com",
+    "root_runs_seen": 1,
+    "matched_run_ids": [
+      "01a1ab8e-9489-7214-ba27-c77c450fb350"
+    ],
+    "public_urls": [
+      {
+        "run_id": "01a1ab8e-9489-7214-ba27-c77c450fb350",
+        "url": "https://smith.langchain.com/public/8d26bcc4-0752-4679-83ac-fc07f9e0287d/r",
+        "unauthenticated_status": 200
+      }
+    ],
+    "verified": true
+  },
+  "final_resolution": "The single most important trade-off in this decision is the balance between initial cost and long-term flexibility and customization versus immediate cost savings and operational efficiency.\n\nBased on the arguments presented, I recommend **BUY**. While building a custom CRM in-house offers long-term flexibility and a better fit for specific operational needs, the initial high cost and the time required to develop and maintain such a system make it less attractive compared to the lower upfront costs and faster deployment of a SaaS CRM. For a company with specific, but not overly complex, requirements, the SaaS CRM provides a more efficient and cost-effective solution.",
+  "history_entry_count": 0
+}

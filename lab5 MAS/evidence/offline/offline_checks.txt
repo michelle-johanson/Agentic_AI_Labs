@@ -1,0 +1,37 @@
+Offline checks use stub agents and the compiled merged graph.
+They are not live Ollama, Tavily, or LangSmith results.
+PASS  T6 malformed results: skipped search warns; bad JSON does not crash; a usable URL is kept
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[fact_checker] called web_search with args: {'query': 'SaaS CRM pricing'}
+[fact_checker] tool returned 2 result(s):
+    - https://example.com/crm-pricing
+    - https://example.com/crm-pricing
+
+--- Saved fact-check report ---
+Round 1 - FACT CHECK:
+BUILD claim that the named vendor has no export API is contradicted. Source URL: https://example.com/crm-pricing
+
+Search record written by the program: 1 tool call(s).
+Query: web_search {'query': 'SaaS CRM pricing'}
+URLs returned by the tool:
+- https://example.com/crm-pricing
+
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[fact_checker] made NO tool calls -- this argument is from the model's own knowledge only.
+
+--- Saved fact-check report ---
+Round 2 - FACT CHECK:
+Round 2 claims add no new external fact. No search was run.
+
+Search record written by the program: no web search was performed. Treat this report as unverified.
+
+PASS  T1 retention and order: entries=['Round 1 - BUILD:', 'Round 1 - BUY:', 'Round 1 - FACT CHECK:', 'Round 2 - BUILD:', 'Round 2 - BUY:', 'Round 2 - FACT CHECK:']; original history untouched=True
+PASS  T2 checker context: second checker input contains both rounds and the first report
+PASS  T3 feedback to advocates: both second-round advocate prompts include the first report and source record
+PASS  T4 moderator context: moderator history entries present; resolution starts: 'BUY. The central tradeoff is exact process fit against lower'
+PASS  T5 skipped search: second checker made no tool call and the program wrote the warning
+PASS  T7 routing: compiled graph node order=['agent_position_a', 'agent_position_b', 'fact_checker', 'agent_position_a', 'agent_position_b', 'fact_checker', 'moderator']
+
+7/7 checks passed

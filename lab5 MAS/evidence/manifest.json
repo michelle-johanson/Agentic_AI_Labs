@@ -1,0 +1,98 @@
+[
+  {
+    "run_id": "merged-01",
+    "variant": "merged",
+    "status": "completed",
+    "started_at": "2026-11-05T11:35:38.223342+00:00",
+    "elapsed_seconds": 286.458041,
+    "source_sha256": "3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab7e-37f1-7338-912c-b92d58a6ff78",
+        "url": "https://smith.langchain.com/public/afac2519-ade3-4e2b-9fc6-3086508f5d2b/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  },
+  {
+    "run_id": "merged-02",
+    "variant": "merged",
+    "status": "completed",
+    "started_at": "2026-11-05T11:41:04.768601+00:00",
+    "elapsed_seconds": 339.075881,
+    "source_sha256": "3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab83-3384-766e-a7ee-64199b59169b",
+        "url": "https://smith.langchain.com/public/a44bfa64-6620-4290-b960-0a4d8f3e4f9c/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  },
+  {
+    "run_id": "merged-03",
+    "variant": "merged",
+    "status": "completed",
+    "started_at": "2026-11-05T11:46:47.549160+00:00",
+    "elapsed_seconds": 350.950822,
+    "source_sha256": "3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab88-6e80-73a7-ad8d-2e23bf07c8fc",
+        "url": "https://smith.langchain.com/public/f0ae147e-8b30-473d-93ee-c51ad9700d7d/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  },
+  {
+    "run_id": "baseline-01",
+    "variant": "baseline",
+    "status": "completed",
+    "started_at": "2026-11-05T11:53:30.503375+00:00",
+    "elapsed_seconds": 126.87475,
+    "source_sha256": "def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab8e-9489-7214-ba27-c77c450fb350",
+        "url": "https://smith.langchain.com/public/8d26bcc4-0752-4679-83ac-fc07f9e0287d/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  },
+  {
+    "run_id": "baseline-02",
+    "variant": "baseline",
+    "status": "completed",
+    "started_at": "2026-11-05T11:55:40.001712+00:00",
+    "elapsed_seconds": 144.164378,
+    "source_sha256": "def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab90-8e64-7036-98e3-c7a603445f69",
+        "url": "https://smith.langchain.com/public/bd9f8567-685a-4435-ae69-ebf4f8a05669/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  },
+  {
+    "run_id": "baseline-03",
+    "variant": "baseline",
+    "status": "completed",
+    "started_at": "2026-11-05T11:58:06.398334+00:00",
+    "elapsed_seconds": 127.894485,
+    "source_sha256": "def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310",
+    "tracing_verified": true,
+    "public_urls": [
+      {
+        "run_id": "01a1ab92-ca41-76a2-8071-1e46d61cb9a4",
+        "url": "https://smith.langchain.com/public/a984d17b-1dda-492d-a2ef-ce7bcf957b8a/r",
+        "unauthenticated_status": 200
+      }
+    ]
+  }
+]

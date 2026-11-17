@@ -1,4 +1,99 @@
-# Source evidence validation
+# Improvement 2: Keyword prefilter recall
+
+## 1. What we extended
+
+`KEYWORDS`, `keyword_hit()`, and `matched_keywords()` in `docAnalyzerCommon.py`. These
+decide which chunks scripts 1, 2, and 4 send to the LLM, so anything they reject is never
+extracted.
+
+- **Matching rule.** Was a raw substring test (`kw in chunk`). Now a regex per keyword
+  (`_keyword_pattern()`, compiled once into `KEYWORD_PATTERNS`): the keyword must start
+  at a word boundary, and spaces/hyphens/line breaks inside a phrase are interchangeable.
+  Acronyms in `WHOLE_WORD_KEYWORDS` (`esg`, `zev`) must also end at a word boundary.
+- **Removed:** bare `clean` (its only solo hit outside climate text was Eli Lilly's
+  Superfund "cleanup"), and the `sea-level` / `net-zero` duplicates the new rule makes
+  redundant.
+- **Added** transition-risk and climate-finance terms the SEC rule cares about:
+  `regulatory credit`, `renewable energy`, `renewable power`, `clean energy`, `clean fuel`,
+  `clean power`, `clean technolog`, `zero-emission`, `zev`, `fuel economy`, `sustainab`,
+  `esg`, `environmental, social`, `energy transition`, `paris agreement`, `tcfd`, and
+  physical-risk terms `storm`, `typhoon`, `extreme heat`, `heat wave`.
+
+New file: `lab3/evalPrefilter.py` (offline, no Ollama calls).
+
+## 2. Why this and not the alternatives
+
+The prefilter sat in front of everything: about 26 of the ~850 chunks in the three 10-Ks
+reached the model. Tesla mentions regulatory credits 20 times (a $2.76B revenue line that
+exists only because of greenhouse-gas and ZEV regulation) and no keyword matched any of it.
+Improving extraction quality downstream can't recover text the model never sees.
+
+Rejected:
+- **Drop the prefilter and send every chunk** (script 3's approach): ~850 LLM calls x up to
+  3 attempts per run, about 14x the new cost, for the same three filings.
+- **Embedding-similarity prefilter** (sentence-transformers, as in labs 1-2): likely better
+  on paraphrases, but adds a model load, a threshold to tune, and is harder to explain
+  why a chunk was kept. Worth trying next, measured against this eval.
+- **Add product words like `solar`, `energy storage`, `electric vehicle`**: Tesla uses them
+  268 / 67 / 37 times, mostly in product descriptions that aren't disclosures under the
+  rule. Prototyping showed they flood the filter.
+- **Add `IRA` / `inflation reduction act`**: tried and removed. It matched Eli Lilly's
+  drug-pricing provisions of the same law (9 chunks) and a Tesla director named Ira.
+- **Keep bare `renewable`**: tried and replaced with `renewable energy` / `renewable power`
+  after it matched a Tesla loan "renewable until March 2026".
+
+## 3. Benefits
+
+`python lab3/evalPrefilter.py` builds the real chunks and checks 27 hand-picked gold
+passages (verbatim anchors that meet the rule's risk / targets / financials / mitigation
+categories) plus the number of chunks sent.
+
+| File | Chunks | Sent before | Sent after | Gold before | Gold after |
+|---|---|---|---|---|---|
+| Costco | 179 | 9 | 13 | 8/8 | 8/8 |
+| Eli Lilly | 346 | 5 | 5 | 3/3 | 3/3 |
+| Tesla | 322 | 12 | 43 | 8/16 | 14/16 |
+| **Total** | 847 | **26** | **61** | **19/27** | **25/27** |
+
+Newly caught: all four Tesla regulatory-credit passages (segment description, the
+$2,763M revenue table row, the $973M MD&A change, the revenue-driver explanation) and both
+renewable-energy transition-risk passages. Nothing in the gold set was lost. The one chunk
+that stopped being sent is the Eli Lilly Superfund/patent-litigation chunk.
+
+**Numbers above were produced with macOS PDFKit text and a fixed 1,500/300 window**, because
+the venv isn't run from the agent shell. `evalPrefilter.py` uses the real `PyPDF2` +
+`RecursiveCharacterTextSplitter` path; run it in the venv and replace this table with its
+output. If `files/script3_gap_report.json` exists, it also reports recall against the
+LLM's own findings on every chunk, which is the less biased measure.
+
+Re-run of earlier evals: `evalEvidence.py` picks its sample chunk with `keyword_hit()`, so
+its chosen chunk may change. Its assertions don't depend on which chunk, but it has not
+been re-run yet (needs the venv).
+
+## 4. Drawbacks and tradeoffs
+
+- **The gold set is mine and small.** I picked the 27 passages and the new keywords from
+  the same reading of the filings, so 25/27 overstates how well this generalizes to a
+  fourth 10-K. The script 3 comparison is the honest check.
+- **2.3x more LLM calls** (26 -> 61), almost all on Tesla. Script 2 runtime grows roughly
+  in proportion.
+- **Real false positives among the 36 newly sent chunks:** "unable to sustainably meet our
+  timelines" (supplier risk), "individuals passionate about sustainable energy" (intern
+  hiring), NHTSA fuel-economy *labeling* rules, and Costco "stormwater" (matched `storm`).
+  `sustainab` is the noisiest addition (11 chunks).
+- **Still missed:** EV incentive-policy risk ("incentives that support... electric
+  vehicles") and "IRA manufacturing credits". Catching them needs `IRA` or `electric
+  vehicle`, which the bullets above show are too noisy as keywords.
+- **Tuned by eye:** the keyword list, the decision to drop bare `clean`, and which acronyms
+  need whole-word matching were all chosen by inspecting matches, not by a held-out test.
+- **Prefix matching** means `storm` also hits "stormwater" and `flood` still hits
+  "flooding" (intended). Within-word PDF artifacts like "regulat ory" would defeat any
+  keyword; PDFKit showed these mostly around the letter "v", so it hasn't mattered for the
+  current list, but `PyPDF2` may differ.
+
+---
+
+# Improvement 1: Source evidence validation
 
 ## 1. What we extended
 
@@ -73,6 +168,18 @@ was present to rerun.
 - Preserve PDF page numbers for each quote to make source review easier.
 - Measure whether quote validation reduces hallucinations without losing disclosures
   on a manually labeled sample of the three filings.
+- Quote check is all-or-nothing and its retry message is generic: pass `last_error`
+  (the exact failing quote) back to the model, and drop only the bad findings.
+- Normalize PDF artifacts (line-break hyphenation, split words like "competitiv e")
+  before quote matching; there are 11-14 hyphenated line breaks per filing.
+- Prompt is ~1,300 tokens before the chunk and schema; confirm Ollama's default context
+  isn't truncating it, or set `ChatOllama(num_ctx=...)`.
+- Embedding-similarity prefilter as an alternative to keywords, scored with
+  `evalPrefilter.py`.
+- Company-level report: dedupe findings across overlapping chunks.
+- `requirements.txt` is missing `PyPDF2`, which every lab3 script imports.
+- Script 1 (3b model) vs script 2 (7b model) comparison mixes model size into the
+  structured-output result.
 
 ## Lab report wording
 

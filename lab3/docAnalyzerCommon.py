@@ -13,14 +13,25 @@ from PyPDF2 import PdfReader
 LAB_DIR = Path(__file__).resolve().parent
 PDF_DIR = str(LAB_DIR / "10KsSmall")
 
-# Same list as the original lab4 solution script.
+# Original lab4 list, minus bare "clean" (matched Superfund "cleanup") and the
+# hyphenated duplicates, plus transition-risk and climate-finance terms.
+# Matching rules are in _keyword_pattern(): each keyword must start at a word
+# boundary, and spaces and hyphens inside a keyword are interchangeable.
 KEYWORDS = [
     "climate", "emission", "greenhouse", "ghg", "scope 1", "scope 2", "scope 3",
     "weather", "natural disaster", "act of god", "acts of god", "tornado",
     "hurricane", "earthquake", "wildfire", "drought", "flood", "temperature",
-    "sea level", "sea-level", "carbon", "warming", "net zero", "net-zero",
-    "methane", "precipitation", "co2", "clean", "green", "earth",
+    "sea level", "carbon", "warming", "net zero",
+    "methane", "precipitation", "co2", "green", "earth",
+    "storm", "typhoon", "extreme heat", "heat wave",
+    "clean energy", "clean fuel", "clean power", "clean technolog",
+    "renewable energy", "renewable power", "energy transition",
+    "regulatory credit", "zero-emission", "zev", "fuel economy",
+    "sustainab", "esg", "environmental, social", "paris agreement", "tcfd",
 ]
+
+# Acronyms that would hit unrelated words if matched as prefixes.
+WHOLE_WORD_KEYWORDS = {"esg", "zev"}
 
 EXPECTED_KEYS = [
     "climate_risks", "emissions", "targets_and_goals",
@@ -49,12 +60,22 @@ def chunk_text(text: str) -> List[str]:
     return textSplitter.split_text(text)
 
 
+def _keyword_pattern(keyword: str) -> re.Pattern:
+    words = re.split(r"[\s\-]+", keyword)
+    body = r"[\s\-]+".join(re.escape(word) for word in words)
+    end = r"s?\b" if keyword in WHOLE_WORD_KEYWORDS else ""
+    return re.compile(r"\b" + body + end, re.IGNORECASE)
+
+
+KEYWORD_PATTERNS = {kw: _keyword_pattern(kw) for kw in KEYWORDS}
+
+
 def keyword_hit(chunk: str) -> bool:
-    return any(kw.casefold() in chunk.casefold() for kw in KEYWORDS)
+    return any(pattern.search(chunk) for pattern in KEYWORD_PATTERNS.values())
 
 
 def matched_keywords(chunk: str) -> List[str]:
-    return [kw for kw in KEYWORDS if kw.casefold() in chunk.casefold()]
+    return [kw for kw, pattern in KEYWORD_PATTERNS.items() if pattern.search(chunk)]
 
 
 class EvidenceFinding(BaseModel):

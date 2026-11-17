@@ -1,0 +1,6 @@
+574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3  instructor source: /Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Labs/lab5 - MAS/debateMAS.py
+574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3  lab5 MAS/baseline/instructor_debateMAS.py
+def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310  lab5 MAS/baseline/instructor_debateMAS_runnable.py
+3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba  lab5 MAS/debateMAS.py
+
+The first two files are byte-identical. The runnable baseline differs only by commenting out draw_mermaid_png. The merged hash is the fact-checked history script with optional trace logging.

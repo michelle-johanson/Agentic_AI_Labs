@@ -1,0 +1,44 @@
+[run] merged-smoke variant=merged
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] called tavily_search with args: {'query': 'SaaS CRM vs custom in-house CRM cost comparison', 'search_depth': 'advanced', 'topic': 'general'}
+[buy_advocate] tool returned 5 result(s):
+    - https://bitvea.com/en/blog/crm-custom-vs-saas
+    - https://0arch.io/blog/cost-to-build-custom-crm
+    - https://codeexi.com/en/blog/crm-or-custom-software-cost-guide
+    - https://www.creatio.com/glossary/saas-crm
+    - https://leadsbridge.com/blog/custom-crm
+[fact_checker] called tavily_search with args: {'query': 'Gartner hidden costs SaaS CRM', 'search_depth': 'basic'}
+[fact_checker] tool returned 5 result(s):
+    - https://block64.com/blog/the-hidden-costs-of-saas-sprawl-why-its-happening-and-how-bad-its-getting
+    - https://www.linkedin.com/posts/beccholland-flipthescript_gartner-reports-that-crm-data-decays-30-activity-7395136237331976192-sAyL
+    - https://www.vendr.com/blog/saas-hidden-costs
+    - https://www.gartner.com/reviews/market/saas-management-platforms
+    - https://www.riministreet.com/blog/gartner-predicts-2022-rising-software-subscription-saas-costs
+
+--- Saved fact-check report ---
+Round 1 - FACT CHECK:
+The search results indicate that Gartner's reports highlight significant hidden costs in SaaS and CRM implementations. According to one of the articles, Gartner reports that up to 25% of SaaS licenses go unused, leading to wasted spending. Another article mentions that CRM data decays by 30% per year, which can cost organizations 15-25% of their overall revenue annually. These findings support the claim that hidden costs in SaaS and CRM are substantial and can impact organizational budgets and data integrity.
+
+From the perspective of the latest debate:
+- **Pro-SaaS Side**: Gartner's reports indicate hidden costs in SaaS and CRM, which can be significant. This claim is **supported** by the findings from the search results.
+
+- **Anti-SaaS Side**: While the search results do not directly contradict the claim about hidden costs, they do provide a balanced view showing that SaaS can be costly due to unused licenses and data decay. Without a specific claim from this side, it's unverifiable whether they contested this finding.
+
+The Pro-SaaS side's claim is supported by the evidence from Gartner's reports and industry analyses.
+
+Search record written by the program: 1 tool call(s).
+Query: tavily_search {'query': 'Gartner hidden costs SaaS CRM', 'search_depth': 'basic'}
+URLs returned by the tool:
+- https://block64.com/blog/the-hidden-costs-of-saas-sprawl-why-its-happening-and-how-bad-its-getting
+- https://www.linkedin.com/posts/beccholland-flipthescript_gartner-reports-that-crm-data-decays-30-activity-7395136237331976192-sAyL
+- https://www.vendr.com/blog/saas-hidden-costs
+- https://www.gartner.com/reviews/market/saas-management-platforms
+- https://www.riministreet.com/blog/gartner-predicts-2022-rising-software-subscription-saas-costs
+
+[build_advocate] called tavily_search with args: {'query': 'custom CRM vs SaaS CRM total cost of ownership', 'search_depth': 'basic'}
+[build_advocate] tool returned 5 result(s):
+    - https://0arch.io/blog/cost-to-build-custom-crm
+    - https://codeexi.com/en/blog/crm-or-custom-software-cost-guide
+    - https://www.salesboom.com/cloud-crm-guide/crm-build-vs-buy-cost-analysis.html
+    - https://leader.net/he/2026/08/13/saas-crm-vs-on-premise-crm-total-cost-of-ownership-comparison-for-smbs
+    - https://nexura.ltd/blog/custom-crm-vs-salesforce-tco

@@ -1,0 +1,115 @@
+{
+  "run_id": "baseline-03",
+  "variant": "baseline",
+  "status": "completed",
+  "error": "",
+  "started_at": "2026-11-05T11:58:06.398334+00:00",
+  "elapsed_seconds": 127.894485,
+  "timeout_seconds": 1500,
+  "model": "qwen2.5:7b",
+  "max_rounds": 2,
+  "source": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/baseline/instructor_debateMAS_runnable.py",
+  "source_sha256": "def3a4391ae0aa86c9d51561005abf52eaf3c57ea481dabf0ef7839ed8901310",
+  "instructor_baseline_sha256": "574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3",
+  "python": "3.14.7",
+  "executable": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/.venv/bin/python",
+  "packages": {
+    "langchain": "1.4.8",
+    "langchain-core": "1.7.6",
+    "langchain-ollama": "1.1.0",
+    "langchain-tavily": "0.2.18",
+    "langgraph": "1.2.19",
+    "langsmith": "0.14.17",
+    "python-dotenv": "1.2.3",
+    "typing_extensions": "4.16.0"
+  },
+  "search_calls": [
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "search_depth": "advanced",
+        "query": "SaaS CRM vs in-house CRM cost comparison 2023"
+      }
+    },
+    {
+      "participant": "build_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "in-house custom CRM development cost",
+        "topic": "general",
+        "search_depth": "advanced"
+      }
+    },
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "search_depth": "advanced",
+        "query": "SaaS CRM pricing comparison 2023"
+      }
+    }
+  ],
+  "participant_order": [
+    "build_advocate",
+    "buy_advocate",
+    "build_advocate",
+    "buy_advocate",
+    "moderator"
+  ],
+  "usage_metadata": [
+    {
+      "input_tokens": 1576,
+      "output_tokens": 140,
+      "total_tokens": 1716
+    },
+    {
+      "input_tokens": 1738,
+      "output_tokens": 42,
+      "total_tokens": 1780
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 767,
+      "total_tokens": 2817
+    },
+    {
+      "input_tokens": 2352,
+      "output_tokens": 40,
+      "total_tokens": 2392
+    },
+    {
+      "input_tokens": 3847,
+      "output_tokens": 163,
+      "total_tokens": 4010
+    },
+    {
+      "input_tokens": 1761,
+      "output_tokens": 38,
+      "total_tokens": 1799
+    },
+    {
+      "input_tokens": 3915,
+      "output_tokens": 162,
+      "total_tokens": 4077
+    }
+  ],
+  "tracing": {
+    "project": "is590r-lab5-debate",
+    "endpoint": "https://api.smith.langchain.com",
+    "root_runs_seen": 1,
+    "matched_run_ids": [
+      "01a1ab92-ca41-76a2-8071-1e46d61cb9a4"
+    ],
+    "public_urls": [
+      {
+        "run_id": "01a1ab92-ca41-76a2-8071-1e46d61cb9a4",
+        "url": "https://smith.langchain.com/public/a984d17b-1dda-492d-a2ef-ce7bcf957b8a/r",
+        "unauthenticated_status": 200
+      }
+    ],
+    "verified": true
+  },
+  "final_resolution": "The single most important trade-off is between the initial upfront cost and the long-term flexibility and scalability of the CRM system. Building the CRM in-house offers tailored functionality and potential long-term cost savings, but requires a significant initial investment. Licensing a SaaS CRM provides immediate functionality and flexibility at a lower initial cost but may require workarounds to meet all business needs.\n\n**Recommendation: BUILD** - Given the significant upfront investment required for a custom CRM, but considering the exact fit to the sales process and long-term potential cost savings, the initial cost of $400K for three years is justified if it ensures alignment with the company\u2019s specific requirements and provides long-term value.",
+  "history_entry_count": 0
+}

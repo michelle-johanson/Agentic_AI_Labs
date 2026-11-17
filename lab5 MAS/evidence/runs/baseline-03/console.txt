@@ -1,0 +1,34 @@
+[run] baseline-03 variant=baseline
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] called tavily_search with args: {'search_depth': 'advanced', 'query': 'SaaS CRM vs in-house CRM cost comparison 2023'}
+[buy_advocate] tool returned 5 result(s):
+    - https://www.insightly.com/blog/cost-of-crm-get-the-details-here
+    - https://leader.net/he/2026/08/13/saas-crm-vs-on-premise-crm-total-cost-of-ownership-comparison-for-smbs
+    - https://www.zoho.com/crm/compare/total-cost-of-ownership-comparison.html
+    - https://brutalmarketing.me/en/blog/crm-implementation-cost
+    - https://suresend.ai/l/crm-pricing-comparison
+[build_advocate] called tavily_search with args: {'query': 'in-house custom CRM development cost', 'topic': 'general', 'search_depth': 'advanced'}
+[build_advocate] tool returned 5 result(s):
+    - https://www.itransition.com/crm/custom
+    - https://proquantic.com/blog/custom-crm-development-cost-insights
+    - https://solguruz.com/crm/custom-crm-development-cost-calculator
+    - https://www.purrweb.com/blog/crm-development-cost
+    - https://www.cleveroad.com/blog/crm-development-cost
+[buy_advocate] called tavily_search with args: {'search_depth': 'advanced', 'query': 'SaaS CRM pricing comparison 2023'}
+[buy_advocate] tool returned 5 result(s):
+    - https://uservoice.com/blog/2023-pricing-models
+    - https://nethunt.com/blog/best-saas-crms
+    - https://suresend.ai/l/crm-pricing-comparison
+    - https://www.bigcontacts.com/blog/crm-pricing
+    - https://www.salesforce.com/crm/crm-pricing-comparison
+
+--- Final BUILD argument ---
+Based on the research, the cost of building a custom CRM in-house can vary widely, ranging from approximately $90,000 for an entry-level CRM for small businesses to $300,000+ for an enterprise-oriented solution with advanced capabilities. Factors that influence the cost include the architecture and functional scope, number of users, tech stack, hosting environment, and number and type of integrations. Additionally, ongoing maintenance, upgrades, and support should also be factored into the total investment. For large enterprises, CRMs with advanced features, mobile apps, AI integration, and third-party system connections can cost around $250,000. Therefore, while building an in-house CRM can provide tailored functionality and long-term cost savings, it requires a significant upfront investment.
+
+--- Final BUY argument ---
+Based on the research, SaaS CRMs like HubSpot, Zoho, and Streak offer competitive pricing and feature options that can be tailored to the specific needs of B2B businesses. For instance, HubSpot provides a freemium option, which can be very attractive for small teams looking to test the platform before committing. Additionally, Streak and Zoho offer flexible pricing models that cater to businesses of different sizes, with tiered pricing that includes various features such as advanced CRM tools and email integrations. These competitive pricing models and feature sets can provide a cost-effective alternative to building an in-house CRM, which often requires significant initial investment and ongoing maintenance. Therefore, SaaS CRMs are not only more cost-efficient but also offer scalability and flexibility that in-house systems may struggle to match.
+
+--- Moderator's resolution ---
+The single most important trade-off is between the initial upfront cost and the long-term flexibility and scalability of the CRM system. Building the CRM in-house offers tailored functionality and potential long-term cost savings, but requires a significant initial investment. Licensing a SaaS CRM provides immediate functionality and flexibility at a lower initial cost but may require workarounds to meet all business needs.
+
+**Recommendation: BUILD** - Given the significant upfront investment required for a custom CRM, but considering the exact fit to the sales process and long-term potential cost savings, the initial cost of $400K for three years is justified if it ensures alignment with the company’s specific requirements and provides long-term value.

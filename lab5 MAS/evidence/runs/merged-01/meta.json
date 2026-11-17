@@ -1,0 +1,148 @@
+{
+  "run_id": "merged-01",
+  "variant": "merged",
+  "status": "completed",
+  "error": "",
+  "started_at": "2026-11-05T11:35:38.223342+00:00",
+  "elapsed_seconds": 286.458041,
+  "timeout_seconds": 1500,
+  "model": "qwen2.5:7b",
+  "max_rounds": 2,
+  "source": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/debateMAS.py",
+  "source_sha256": "3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba",
+  "instructor_baseline_sha256": "574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3",
+  "python": "3.14.7",
+  "executable": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/.venv/bin/python",
+  "packages": {
+    "langchain": "1.4.8",
+    "langchain-core": "1.7.6",
+    "langchain-ollama": "1.1.0",
+    "langchain-tavily": "0.2.18",
+    "langgraph": "1.2.19",
+    "langsmith": "0.14.17",
+    "python-dotenv": "1.2.3",
+    "typing_extensions": "4.16.0"
+  },
+  "search_calls": [
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "SaaS CRM pricing comparison 2023",
+        "search_depth": "advanced",
+        "start_date": "2023-01-01"
+      }
+    },
+    {
+      "participant": "fact_checker",
+      "name": "tavily_search",
+      "args": {
+        "query": "cost comparison of building custom CRM vs SaaS CRM",
+        "topic": "general",
+        "search_depth": "advanced"
+      }
+    },
+    {
+      "participant": "build_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "cost comparison of building custom CRM vs SaaS CRM",
+        "topic": "general",
+        "search_depth": "advanced"
+      }
+    },
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "topic": "general",
+        "search_depth": "advanced",
+        "query": "SaaS CRM pricing and feature comparisons 2023"
+      }
+    }
+  ],
+  "participant_order": [
+    "build_advocate",
+    "buy_advocate",
+    "fact_checker",
+    "build_advocate",
+    "buy_advocate",
+    "fact_checker",
+    "moderator"
+  ],
+  "usage_metadata": [
+    {
+      "input_tokens": 1615,
+      "output_tokens": 238,
+      "total_tokens": 1853
+    },
+    {
+      "input_tokens": 1883,
+      "output_tokens": 54,
+      "total_tokens": 1937
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 615,
+      "total_tokens": 2665
+    },
+    {
+      "input_tokens": 2586,
+      "output_tokens": 44,
+      "total_tokens": 2630
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 586,
+      "total_tokens": 2636
+    },
+    {
+      "input_tokens": 3219,
+      "output_tokens": 521,
+      "total_tokens": 3740
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 471,
+      "total_tokens": 2521
+    },
+    {
+      "input_tokens": 3708,
+      "output_tokens": 424,
+      "total_tokens": 4132
+    },
+    {
+      "input_tokens": 4012,
+      "output_tokens": 167,
+      "total_tokens": 4179
+    },
+    {
+      "input_tokens": 3963,
+      "output_tokens": 230,
+      "total_tokens": 4193
+    },
+    {
+      "input_tokens": 2711,
+      "output_tokens": 210,
+      "total_tokens": 2921
+    }
+  ],
+  "tracing": {
+    "project": "is590r-lab5-debate",
+    "endpoint": "https://api.smith.langchain.com",
+    "root_runs_seen": 1,
+    "matched_run_ids": [
+      "01a1ab7e-37f1-7338-912c-b92d58a6ff78"
+    ],
+    "public_urls": [
+      {
+        "run_id": "01a1ab7e-37f1-7338-912c-b92d58a6ff78",
+        "url": "https://smith.langchain.com/public/afac2519-ade3-4e2b-9fc6-3086508f5d2b/r",
+        "unauthenticated_status": 200
+      }
+    ],
+    "verified": true
+  },
+  "final_resolution": "### Single Most Important Trade-Off:\nThe most critical trade-off in this decision is between **initial cost and flexibility**. Building a custom CRM in-house offers higher flexibility and a perfect fit to specific sales processes, but comes with a significantly higher initial cost. Licensing a SaaS CRM, on the other hand, has a lower initial cost but may require more manual workarounds to meet all business needs.\n\n### Recommendation:\n**BUILD a custom CRM in-house.**\n\n### Justification:\nWhile the SaaS CRM option offers a lower initial cost and covers 80% of requirements out of the box, the remaining 20% would need manual workaround processes, which could be inefficient and costly in the long run. The Jiss Tech tool and other sources indicate that the initial development cost for a custom CRM is higher but becomes more cost-effective after 18-36 months. Given the significant flexibility and alignment with specific sales processes, the long-term benefits of a custom CRM outweigh the higher initial investment for the company in question.",
+  "history_entry_count": 6
+}

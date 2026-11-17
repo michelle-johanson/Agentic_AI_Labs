@@ -1,0 +1,185 @@
+START baseline-01 2026-11-05T11:53:29.671120+00:00
+[run] baseline-01 variant=baseline
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] called tavily_search with args: {'query': 'SaaS CRM pricing comparison, integration costs, long-term maintenance and support', 'search_depth': 'advanced'}
+[buy_advocate] tool returned 5 result(s):
+    - https://leader.net/he/2026/08/13/saas-crm-vs-on-premise-crm-total-cost-of-ownership-comparison-for-smbs
+    - https://saleoid.com/blog/crm-pricing-comparison
+    - https://www.expertmarket.com/crm/compare-pricing
+    - https://getknit.dev/blog/build-vs-buy-the-best-approach-to-saas-integrations
+    - https://www.salesforce.com/crm/crm-pricing-comparison
+[build_advocate] called tavily_search with args: {'query': 'in-house CRM development cost comparison', 'search_depth': 'advanced', 'topic': 'general'}
+[build_advocate] tool returned 5 result(s):
+    - https://leadsbridge.com/blog/custom-crm
+    - https://www.purrweb.com/blog/crm-development-cost
+    - https://appwrk.com/insights/crm-software-development-cost-guide
+    - https://softwareorbits.com/in-house-vs-outsourcing-software-development
+    - https://perimattic.com/custom-crm-development-cost
+[buy_advocate] called tavily_search with args: {'query': 'SaaS CRM vs in-house development cost comparison', 'search_depth': 'advanced'}
+[buy_advocate] tool returned 5 result(s):
+    - https://fintech-market.com/blog/in-house-development-vs-saas-lending-software
+    - https://bukittechnology.com/unlocking-efficiency-a-comparative-analysis-of-saas-vs-in-house-development
+    - https://www.zendesk.com/sell/crm/saas
+    - https://www.creatio.com/glossary/saas-crm
+    - https://bitbytetechnology.com/blog/saas-development-cost
+
+--- Final BUILD argument ---
+Based on the search results, developing a custom CRM in-house can offer significant long-term benefits and cost savings, especially for larger organizations with specific operational needs. According to recent industry benchmarks, the cost of custom CRM development can range from $20,000 to several hundred thousand dollars, depending on the complexity and scope of the project. For instance, a basic CRM system might cost between $30,000 and $60,000, while an enterprise-grade CRM could exceed $200,000. However, while the initial investment is higher, owning the code and having full flexibility in feature customization can lead to higher long-term return on investment, particularly for teams of 20+ users with complex workflows. Additionally, outsourcing the development to a capable engineering team can help manage the project risks and ensure the system aligns with specific operational needs.
+
+--- Final BUY argument ---
+Based on the research, SaaS CRM solutions offer several advantages over in-house development, particularly in terms of cost and time efficiency. For instance, a SaaS CRM can be up and running in days or weeks, whereas in-house development can take months due to extensive coding, testing, and infrastructure setup. Additionally, SaaS CRM providers handle all updates, bug fixes, and security patches, which can significantly reduce maintenance costs. According to the data, the cost of developing a small and complex enterprise CRM in-house can range from $100K to $600K, whereas SaaS CRM solutions follow a subscription-based pricing model, typically charged on a monthly or annual basis, making them more cost-effective, especially for small and medium-sized businesses.
+
+This aligns with the argument that building in-house can be prohibitively expensive and time-consuming. Therefore, opting for a SaaS CRM can provide faster deployment, lower initial investment, and reduced maintenance costs, making it a more attractive option for businesses looking to manage customer relationships efficiently.
+
+--- Moderator's resolution ---
+The single most important trade-off in this decision is the balance between initial cost and long-term flexibility and customization versus immediate cost savings and operational efficiency.
+
+Based on the arguments presented, I recommend **BUY**. While building a custom CRM in-house offers long-term flexibility and a better fit for specific operational needs, the initial high cost and the time required to develop and maintain such a system make it less attractive compared to the lower upfront costs and faster deployment of a SaaS CRM. For a company with specific, but not overly complex, requirements, the SaaS CRM provides a more efficient and cost-effective solution.
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:259: LangSmithDeprecationWarning: list_runs() is deprecated and will be removed after Jan 31, 2027. Use client.runs.query() instead.See https://docs.langchain.com/langsmith/smithdb-sdk-migration-query-runs#runs-query for the migration guide.
+  runs = list(client.list_runs(
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:240: LangSmithDeprecationWarning: share_run() is deprecated and will be removed after Jan 31, 2027. Use client.runs.share.create() instead. See https://docs.langchain.com/langsmith/smithdb-sdk-migration-feedback#share-and-read-public-runs for the migration guide.
+  return client.share_run(run.id)
+[saved] /Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/evidence/runs/baseline-01 status=completed elapsed=126.9s
+
+END baseline-01 exit=0
+START baseline-02 2026-11-05T11:55:39.212003+00:00
+[run] baseline-02 variant=baseline
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] called tavily_search with args: {'query': 'SaaS CRM vs in-house CRM total cost of ownership comparison', 'search_depth': 'advanced'}
+[buy_advocate] tool returned 5 result(s):
+    - https://b2broker.com/news/in-house-vs-ready-made-crm-software
+    - https://www.salesboom.com/cloud-crm-guide/crm-build-vs-buy-cost-analysis.html
+    - https://www.smarketingcloud.com/blog/total-cost-of-ownership-saas-vs-all-in-one-platform-for-scaling-teams
+    - https://www.hyphadev.io/blog/calculate-true-crm-ownership-cost
+    - https://www.linkedin.com/posts/kansasol_in-house-crm-vs-salesforce-zoho-odoo-activity-7427425610534367233-CHLl
+[build_advocate] called tavily_search with args: {'topic': 'general', 'query': 'in-house CRM cost comparison SaaS', 'search_depth': 'advanced', 'start_date': '2023-01-01'}
+[build_advocate] tool returned 5 result(s):
+    - https://www.linkedin.com/posts/kansasol_in-house-crm-vs-salesforce-zoho-odoo-activity-7427425610534367233-CHLl
+    - https://www.creatio.com/glossary/saas-crm
+    - https://www.zendesk.com/sell/crm/saas
+    - https://www.vtiger.com/blog/what-is-saas-crm
+    - https://www.zoho.com/crm/compare/total-cost-of-ownership-comparison.html
+[buy_advocate] called tavily_search with args: {'query': 'SaaS CRM vs in-house CRM cost comparison 2023', 'search_depth': 'advanced'}
+[buy_advocate] tool returned 5 result(s):
+    - https://www.insightly.com/blog/cost-of-crm-get-the-details-here
+    - https://leader.net/he/2026/08/13/saas-crm-vs-on-premise-crm-total-cost-of-ownership-comparison-for-smbs
+    - https://www.zoho.com/crm/compare/total-cost-of-ownership-comparison.html
+    - https://brutalmarketing.me/en/blog/crm-implementation-cost
+    - https://suresend.ai/l/crm-pricing-comparison
+
+--- Final BUILD argument ---
+Based on the comprehensive analysis from the provided sources, building a custom in-house CRM can indeed offer significant strategic advantages that the SaaS option cannot match. A key point from the linked articles is the control and scalability offered by an in-house CRM. For instance, an in-house CRM allows for full control over the system, no per-user cost pressures, and unlimited access for both internal and external users, which is crucial as your business grows. Furthermore, building an in-house CRM can align perfectly with your unique sales process, offering the necessary flexibility to adapt and evolve as your business needs change.
+
+Additionally, the cost of an in-house CRM, while initially higher, can be justified by its long-term benefits. The ongoing maintenance and support costs for a SaaS CRM can add up significantly over time. According to the Zoho CRM comparison, the annual cost of licensing for a SaaS CRM can range from $80,400 to $388,800, plus the cost of hiring an in-house expert which can range from $67,000 to $200,000 per year. In contrast, an in-house CRM system, despite requiring significant initial investment, can provide full customization and potentially reduce long-term costs through optimized workflows and data ownership.
+
+Therefore, while the initial setup cost is higher, an in-house CRM can offer better control, flexibility, and long-term cost savings, making it a more strategic choice for organizations with a long-term digital vision.
+
+--- Final BUY argument ---
+Based on the information provided, here's a summary comparing the Total Cost of Ownership (TCO) for SaaS and on-premise CRM scenarios, along with the reasons why SMBs are moving to SaaS:
+
+### SaaS CRM Scenario (100 Users)
+- **Monthly Subscription**: $50/user = $5,000/month
+- **Annual Cost**: $60,000
+- **5-Year Cost**: $300,000
+- **Implementation**: $5,000 (one-time)
+- **Training**: $3,000 (one-time)
+- **Additional Integrations**: $2,000 (one-time)
+- **Total 5-Year TCO**: $310,000
+
+### On-Premise CRM Scenario (100 Users)
+- **Software Licenses**: $50,000 (one-time)
+- **Server Hardware**: $35,000
+- **Implementation**: $75,000
+- **Year 1 Maintenance**: $25,000
+- **Years 2-5 Maintenance**: $20,000/year = $80,000
+- **IT Staffing (1 FTE)**: $50,000/year × 5 years = $250,000
+- **Hardware Upgrades**: $30,000 (year 3)
+- **Backup/Redundancy**: $15,000 (one-time)
+- **Database Software**: $8,000
+- **Total 5-Year TCO**: $548,000
+
+### Key Insights
+1. **Cost Comparison**:
+   - SaaS: $310,000 (5-year TCO)
+   - On-Premise: $548,000 (5-year TCO)
+   - SaaS is 40-60% cheaper over five years for SMBs.
+
+2. **Implementation and Onboarding**:
+   - **SaaS**: Fast implementation (weeks), minimal one-time costs for setup and training.
+   - **On-Premise**: More complex implementation (months), substantial upfront costs and ongoing maintenance.
+
+3. **Hidden Costs**:
+   - On-premise CRM systems have higher initial capital expenditure, ongoing maintenance, and IT staffing.
+   - SaaS often includes maintenance and training as part of the subscription, reducing hidden costs.
+
+### Why SMBs Are Moving to SaaS:
+- **Cost Efficiency**: SaaS is significantly cheaper over the long term.
+- **Ease of Implementation**: Faster setup and lower initial costs.
+- **Scalability**: Easier to scale with no need for additional hardware.
+- **Maintenance and Updates**: SaaS providers handle updates and maintenance, reducing the burden on IT staff.
+
+### Customer Reviews and Social Proof:
+- Many customers report achieving ROI quickly with SaaS solutions, often within weeks of implementation.
+- Reviews highlight the ease and speed of implementation as a key advantage.
+
+### Additional Considerations:
+- **Integration Costs**: Both SaaS and on-premise CRM systems can have integration costs, but these are often lower and more manageable with SaaS.
+- **Data Migration**: Minimal additional cost for SaaS due to vendor handling, but can be more complex for on-premise systems.
+
+In conclusion, the cost savings, ease of implementation, and reduced maintenance requirements make SaaS a compelling choice for SMBs looking to manage their CRM efficiently.
+
+--- Moderator's resolution ---
+The single most important trade-off explicitly is the balance between initial cost and long-term flexibility and control versus the cost efficiency and ease of implementation provided by a SaaS solution.
+
+**Recommendation: BUILD.** 
+
+While the initial cost is higher, the in-house CRM offers better control, flexibility, and long-term cost savings, making it a more strategic choice for organizations with a long-term digital vision.
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:259: LangSmithDeprecationWarning: list_runs() is deprecated and will be removed after Jan 31, 2027. Use client.runs.query() instead.See https://docs.langchain.com/langsmith/smithdb-sdk-migration-query-runs#runs-query for the migration guide.
+  runs = list(client.list_runs(
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:240: LangSmithDeprecationWarning: share_run() is deprecated and will be removed after Jan 31, 2027. Use client.runs.share.create() instead. See https://docs.langchain.com/langsmith/smithdb-sdk-migration-feedback#share-and-read-public-runs for the migration guide.
+  return client.share_run(run.id)
+[saved] /Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/evidence/runs/baseline-02 status=completed elapsed=144.2s
+
+END baseline-02 exit=0
+START baseline-03 2026-11-05T11:58:05.504188+00:00
+[run] baseline-03 variant=baseline
+[build_advocate] made NO tool calls -- this argument is from the model's own knowledge only.
+[buy_advocate] called tavily_search with args: {'search_depth': 'advanced', 'query': 'SaaS CRM vs in-house CRM cost comparison 2023'}
+[buy_advocate] tool returned 5 result(s):
+    - https://www.insightly.com/blog/cost-of-crm-get-the-details-here
+    - https://leader.net/he/2026/08/13/saas-crm-vs-on-premise-crm-total-cost-of-ownership-comparison-for-smbs
+    - https://www.zoho.com/crm/compare/total-cost-of-ownership-comparison.html
+    - https://brutalmarketing.me/en/blog/crm-implementation-cost
+    - https://suresend.ai/l/crm-pricing-comparison
+[build_advocate] called tavily_search with args: {'query': 'in-house custom CRM development cost', 'topic': 'general', 'search_depth': 'advanced'}
+[build_advocate] tool returned 5 result(s):
+    - https://www.itransition.com/crm/custom
+    - https://proquantic.com/blog/custom-crm-development-cost-insights
+    - https://solguruz.com/crm/custom-crm-development-cost-calculator
+    - https://www.purrweb.com/blog/crm-development-cost
+    - https://www.cleveroad.com/blog/crm-development-cost
+[buy_advocate] called tavily_search with args: {'search_depth': 'advanced', 'query': 'SaaS CRM pricing comparison 2023'}
+[buy_advocate] tool returned 5 result(s):
+    - https://uservoice.com/blog/2023-pricing-models
+    - https://nethunt.com/blog/best-saas-crms
+    - https://suresend.ai/l/crm-pricing-comparison
+    - https://www.bigcontacts.com/blog/crm-pricing
+    - https://www.salesforce.com/crm/crm-pricing-comparison
+
+--- Final BUILD argument ---
+Based on the research, the cost of building a custom CRM in-house can vary widely, ranging from approximately $90,000 for an entry-level CRM for small businesses to $300,000+ for an enterprise-oriented solution with advanced capabilities. Factors that influence the cost include the architecture and functional scope, number of users, tech stack, hosting environment, and number and type of integrations. Additionally, ongoing maintenance, upgrades, and support should also be factored into the total investment. For large enterprises, CRMs with advanced features, mobile apps, AI integration, and third-party system connections can cost around $250,000. Therefore, while building an in-house CRM can provide tailored functionality and long-term cost savings, it requires a significant upfront investment.
+
+--- Final BUY argument ---
+Based on the research, SaaS CRMs like HubSpot, Zoho, and Streak offer competitive pricing and feature options that can be tailored to the specific needs of B2B businesses. For instance, HubSpot provides a freemium option, which can be very attractive for small teams looking to test the platform before committing. Additionally, Streak and Zoho offer flexible pricing models that cater to businesses of different sizes, with tiered pricing that includes various features such as advanced CRM tools and email integrations. These competitive pricing models and feature sets can provide a cost-effective alternative to building an in-house CRM, which often requires significant initial investment and ongoing maintenance. Therefore, SaaS CRMs are not only more cost-efficient but also offer scalability and flexibility that in-house systems may struggle to match.
+
+--- Moderator's resolution ---
+The single most important trade-off is between the initial upfront cost and the long-term flexibility and scalability of the CRM system. Building the CRM in-house offers tailored functionality and potential long-term cost savings, but requires a significant initial investment. Licensing a SaaS CRM provides immediate functionality and flexibility at a lower initial cost but may require workarounds to meet all business needs.
+
+**Recommendation: BUILD** - Given the significant upfront investment required for a custom CRM, but considering the exact fit to the sales process and long-term potential cost savings, the initial cost of $400K for three years is justified if it ensures alignment with the company’s specific requirements and provides long-term value.
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:259: LangSmithDeprecationWarning: list_runs() is deprecated and will be removed after Jan 31, 2027. Use client.runs.query() instead.See https://docs.langchain.com/langsmith/smithdb-sdk-migration-query-runs#runs-query for the migration guide.
+  runs = list(client.list_runs(
+/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/eval_runner.py:240: LangSmithDeprecationWarning: share_run() is deprecated and will be removed after Jan 31, 2027. Use client.runs.share.create() instead. See https://docs.langchain.com/langsmith/smithdb-sdk-migration-feedback#share-and-read-public-runs for the migration guide.
+  return client.share_run(run.id)
+[saved] /Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/evidence/runs/baseline-03 status=completed elapsed=127.9s
+
+END baseline-03 exit=0

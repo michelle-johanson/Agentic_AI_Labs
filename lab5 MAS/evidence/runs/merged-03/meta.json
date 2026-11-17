@@ -1,0 +1,119 @@
+{
+  "run_id": "merged-03",
+  "variant": "merged",
+  "status": "completed",
+  "error": "",
+  "started_at": "2026-11-05T11:46:47.549160+00:00",
+  "elapsed_seconds": 350.950822,
+  "timeout_seconds": 1500,
+  "model": "qwen2.5:7b",
+  "max_rounds": 2,
+  "source": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/lab5 MAS/debateMAS.py",
+  "source_sha256": "3f16cb0f47b734413070a54fa1ded40827a9767fd63e83cb398574b10c22afba",
+  "instructor_baseline_sha256": "574feba4d9a873c7b343536d8dcdfaf45d46dc0bc640ee5117f96343315c06d3",
+  "python": "3.14.7",
+  "executable": "/Users/jensroylance/Desktop/School Stuff/Fall 2026/IS590R Agentic AI/Agentic_AI_Labs/.venv/bin/python",
+  "packages": {
+    "langchain": "1.4.8",
+    "langchain-core": "1.7.6",
+    "langchain-ollama": "1.1.0",
+    "langchain-tavily": "0.2.18",
+    "langgraph": "1.2.19",
+    "langsmith": "0.14.17",
+    "python-dotenv": "1.2.3",
+    "typing_extensions": "4.16.0"
+  },
+  "search_calls": [
+    {
+      "participant": "buy_advocate",
+      "name": "tavily_search",
+      "args": {
+        "query": "SaaS CRM pricing and features comparison",
+        "search_depth": "advanced",
+        "topic": "general"
+      }
+    },
+    {
+      "participant": "fact_checker",
+      "name": "tavily_search",
+      "args": {
+        "query": "cost of ownership SaaS CRM vs in-house CRM",
+        "search_depth": "advanced"
+      }
+    }
+  ],
+  "participant_order": [
+    "build_advocate",
+    "buy_advocate",
+    "fact_checker",
+    "build_advocate",
+    "buy_advocate",
+    "fact_checker",
+    "moderator"
+  ],
+  "usage_metadata": [
+    {
+      "input_tokens": 1615,
+      "output_tokens": 220,
+      "total_tokens": 1835
+    },
+    {
+      "input_tokens": 1865,
+      "output_tokens": 41,
+      "total_tokens": 1906
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 605,
+      "total_tokens": 2655
+    },
+    {
+      "input_tokens": 2558,
+      "output_tokens": 38,
+      "total_tokens": 2596
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 911,
+      "total_tokens": 2961
+    },
+    {
+      "input_tokens": 3527,
+      "output_tokens": 692,
+      "total_tokens": 4219
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 910,
+      "total_tokens": 2960
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 1182,
+      "total_tokens": 3232
+    },
+    {
+      "input_tokens": 2050,
+      "output_tokens": 862,
+      "total_tokens": 2912
+    }
+  ],
+  "tracing": {
+    "project": "is590r-lab5-debate",
+    "endpoint": "https://api.smith.langchain.com",
+    "root_runs_seen": 1,
+    "matched_run_ids": [
+      "01a1ab88-6e80-73a7-ad8d-2e23bf07c8fc"
+    ],
+    "public_urls": [
+      {
+        "run_id": "01a1ab88-6e80-73a7-ad8d-2e23bf07c8fc",
+        "url": "https://smith.langchain.com/public/f0ae147e-8b30-473d-93ee-c51ad9700d7d/r",
+        "unauthenticated_status": 200
+      }
+    ],
+    "verified": true
+  },
+  "final_resolution": "### Summary of the Case for Building a Custom CRM\n\n#### 1. Cost Analysis\n\n**SaaS CRM:**\n- **Annual Costs**: Salesforce Sales Cloud at $334,800 and HubSpot Sales Hub at $80,400.\n- **Hidden Costs**: Additional integration, training, and support costs can significantly increase the total cost of ownership (TCO).\n\n**Custom CRM:**\n- **Initial Development Cost**: $400K over three years.\n- **No Hidden Costs**: Ensures a highly integrated and customized system with no additional hidden costs.\n\n#### 2. Hidden Costs and Workarounds\n\n**SaaS CRM:**\n- **Manual Workarounds**: SaaS CRMs typically cover 80% of requirements, leaving 20% that often require manual workarounds, which can lead to additional overhead.\n\n**Custom CRM:**\n- **No Workarounds**: A custom CRM avoids manual workarounds, ensuring the system is fully integrated and aligned with specific needs.\n\n#### 3. Integration and Customization\n\n**SaaS CRM:**\n- **Costly Integrations**: Integration costs can range from $45 to $100 per hour, and ongoing support and training can be expensive.\n- **Inefficiencies**: Manual workarounds and limited customization can reduce productivity and efficiency.\n\n**Custom CRM:**\n- **Seamless Integration**: Customizing the CRM in-house allows for seamless integration with existing tools and processes, reducing the need for expensive third-party integrations.\n- **Flexibility**: Greater flexibility to make changes as needed without incurring additional costs.\n\n#### 4. Detailed Cost-Benefit Analysis\n\n- **SaaS CRM**: Annual cost of $150K for three years totals $450K, but this does not account for additional integration, training, and support costs.\n- **Custom CRM**: Initial development cost of $400K over three years, which ensures a highly integrated and customized system, with no additional hidden costs.\n\n#### 5. Conclusion\n\nBy building a custom CRM in-house, we can avoid hidden costs associated with SaaS CRMs, ensuring a more efficient, tailored system that aligns with our specific needs. This approach leads to a lower total cost of ownership over the long term, providing a better return on investment and a more streamlined user experience.\n\n#### Additional Benefits\n\n- **Data Security and Compliance**: Custom CRM systems can be designed to meet specific data security and compliance requirements.\n- **Scalability and Flexibility**: A custom CRM can be easily scaled and adapted to future business needs without incurring additional costs.\n- **User Experience**: A system tailored to specific processes ensures a more intuitive and user-friendly experience, leading to higher adoption and engagement.\n\n#### Final Recommendation\n\nGiven the cost-benefit analysis and additional benefits, we recommend building a custom CRM in-house. This approach will result in a more efficient, secure, and scalable system that aligns with our unique business requirements, leading to better long-term value and operational efficiency.\n\n**Initial Investment**: $400K over three years\n**Ongoing Costs**: Minimal\n**Total Cost of Ownership**: Lower than SaaS CRM\n\n**Conclusion**: Building a custom CRM in-house is the more cost-effective and efficient solution.\n\n### Summary of Key Points\n\n1. **TCO Comparison**:\n   - **SaaS CRM**: Initial cost is manageable but hidden costs can increase the total cost of ownership significantly.\n   - **Custom CRM**: Higher initial development cost but no hidden costs, leading to a lower total cost of ownership over time.\n\n2. **Efficiency and Integration**:\n   - **SaaS CRM**: Limited by out-of-the-box features, leading to workarounds and inefficiencies.\n   - **Custom CRM**: Tailored to specific needs, ensuring seamless integration and efficient operations.\n\n3. **Flexibility and Security**:\n   - **SaaS CRM**: Limited flexibility, potential security risks due to shared infrastructure.\n   - **Custom CRM**: Greater flexibility and tailored security measures.\n\n### Final Recommendation\n\nGiven the analysis, we recommend building a custom CRM in-house to achieve a more efficient, secure, and scalable system that aligns with our specific business needs.",
+  "history_entry_count": 6
+}
