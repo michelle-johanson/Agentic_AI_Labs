@@ -1,3 +1,6 @@
+import re
+from decimal import Decimal
+
 from dotenv import load_dotenv
 from typing_extensions import TypedDict
 from langgraph.graph import END, START, StateGraph
@@ -14,6 +17,49 @@ model = init_chat_model("ollama:qwen3") #anthropic:claude-haiku-4-5
 
 # US-style phone numbers: 555-201-9988, 555.201.9988, 5552019988, etc.
 PHONE_PATTERN = r"\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b"
+# Same shape as the email detector on sanitize_intake. Local, so the refund
+# fields do not depend on the model copying them out of the summary.
+EMAIL_PATTERN = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b"
+# Dollar amounts only. A bare number would also match pieces of a card number.
+AMOUNT_PATTERN = r"\$\d+(?:,\d{3})*(?:\.\d{2})?"
+
+
+def detect_customer_email(text: str) -> str:
+    """Return the email addresses in `text`, in order, without duplicates.
+
+    One address is returned as itself. Several are joined with ", " so a
+    second address is not dropped. No address returns an empty string.
+    """
+    found = list(dict.fromkeys(re.findall(EMAIL_PATTERN, text)))
+    if not found:
+        return ""
+    if len(found) == 1:
+        return found[0]
+    return ", ".join(found)
+
+
+def detect_claimed_amount(text: str) -> str:
+    """Return the refund amount the message is asking for.
+
+    One dollar amount is returned as written. When the message says
+    "difference" and quotes at least two prices, the amount is the gap
+    between the last two. Otherwise every detected amount is listed, and
+    the model is not handed a single guess. "Twice" does not multiply the
+    price: a duplicate charge of $49.99 is a $49.99 refund.
+    """
+    found = re.findall(AMOUNT_PATTERN, text)
+    if not found:
+        return ""
+    if len(found) == 1:
+        return found[0]
+    if re.search(r"\bdifference\b", text, re.IGNORECASE):
+        values = [
+            Decimal(amount.replace("$", "").replace(",", "")) for amount in found
+        ]
+        gap = abs(values[-1] - values[-2])
+        return f"${gap:.2f}"
+    return ", ".join(found)
+
 
 sanitize_intake = create_agent(
     model,
@@ -49,11 +95,13 @@ draft_refund_action = create_agent(
     model,
     tools=[issue_refund],
     system_prompt=(
-        "You help resolve billing complaints. Read the customer's raw "
-        "message, and if a refund is clearly warranted, call issue_refund "
-        "with their actual email, a specific amount, and a one-line "
-        "reason. If a refund isn't clearly warranted, explain why instead "
-        "of calling the tool."
+        "You help resolve billing complaints. The user message gives you a "
+        "redacted summary, the customer email, and the claimed amount. "
+        "Those were extracted for you. If a refund is clearly warranted, "
+        "call issue_refund with that email, that claimed amount, and a "
+        "one-line reason. Do not invent an email or an amount, and do not "
+        "ask for the original message. If a refund isn't clearly warranted, "
+        "explain why instead of calling the tool."
     ),
     middleware=[
         HumanInTheLoopMiddleware(
@@ -71,6 +119,8 @@ class SupportState(TypedDict):
     redacted_summary: str
     category: str
     refund_outcome: str
+    email: str
+    claimed_amount: str
 
 
 def sanitize_intake_node(state: SupportState) -> dict:
@@ -91,10 +141,28 @@ def triage_node(state: SupportState) -> dict:
     return {"category": response.text.strip().upper()}
 
 
+def extract_refund_fields_node(state: SupportState) -> dict:
+    """Fill email and claimed_amount from the raw message before the refund agent runs."""
+    return {
+        "email": detect_customer_email(state["raw_message"]),
+        "claimed_amount": detect_claimed_amount(state["raw_message"]),
+    }
+
+
+def refund_agent_input(state: SupportState) -> str:
+    """What draft_refund_action sees. The raw message is not included."""
+    email = state["email"] or "(none detected)"
+    amount = state["claimed_amount"] or "(none detected)"
+    return (
+        f"Redacted summary: {state['redacted_summary']}\n"
+        f"Customer email: {email}\n"
+        f"Claimed amount: {amount}"
+    )
+
+
 def draft_refund_action_node(state: SupportState) -> dict:
-    # Deliberately reads raw_message, not redacted_summary -- see docstring.
     result = draft_refund_action.invoke(
-        {"messages": [{"role": "user", "content": state["raw_message"]}]}
+        {"messages": [{"role": "user", "content": refund_agent_input(state)}]}
     )
     return {"refund_outcome": result["messages"][-1].text}
 
@@ -103,19 +171,21 @@ def route_after_triage(state: SupportState) -> str:
     # Only a billing ticket has any business reaching an agent whose
     # entire system prompt is about resolving billing complaints.
     if state["category"] == "BILLING":
-        return "draft_refund_action"
+        return "extract_refund_fields"
     return END
 
 
 graph = StateGraph(SupportState)
 graph.add_node("sanitize_intake", sanitize_intake_node)
 graph.add_node("triage", triage_node)
+graph.add_node("extract_refund_fields", extract_refund_fields_node)
 graph.add_node("draft_refund_action", draft_refund_action_node)
 graph.add_edge(START, "sanitize_intake")
 graph.add_edge("sanitize_intake", "triage")
 graph.add_conditional_edges(
-    "triage", route_after_triage, ["draft_refund_action", END]
+    "triage", route_after_triage, ["extract_refund_fields", END]
 )
+graph.add_edge("extract_refund_fields", "draft_refund_action")
 graph.add_edge("draft_refund_action", END)
 support_graph = graph.compile(checkpointer=InMemorySaver())
 #support_graph.get_graph().draw_mermaid_png(output_file_path="support_workflow.png")
@@ -198,6 +268,8 @@ if __name__ == "__main__":
                 "redacted_summary": "",
                 "category": "",
                 "refund_outcome": "",
+                "email": "",
+                "claimed_amount": "",
             },
             thread_id=label,
         )
@@ -205,6 +277,9 @@ if __name__ == "__main__":
         print(final["redacted_summary"])
         print("\n--- Category ---")
         print(final["category"])
+        print("\n--- Email / claimed amount (filled only on the billing path) ---")
+        print(final["email"] or "(none detected)")
+        print(final["claimed_amount"] or "(none detected)")
         print("\n--- Refund outcome ---")
         print(
             final["refund_outcome"]
