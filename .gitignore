@@ -8,3 +8,6 @@ lab1/chroma/
 # `python "lab2/embedMusicChunks.py"`
 lab2/chroma/
 lab2/pitchfork_reviews_v2.xlsx
+
+# Lab 6 audit log: contains customer emails, regenerated on every run
+refund_audit_log.json
